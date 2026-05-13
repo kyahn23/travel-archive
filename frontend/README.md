@@ -1,0 +1,110 @@
+# Travel Archive - Frontend
+
+Next.js 16.2.6 App Router 기반 프론트엔드입니다.
+
+## 사전 준비
+
+- Node.js 18 이상
+- 백엔드 서버가 `http://localhost:8080`에서 실행 중이어야 합니다.
+
+## 설치
+
+```bash
+npm install
+```
+
+## 개발 서버 실행
+
+```bash
+npm run dev
+```
+
+기본적으로 `http://localhost:3000`에서 실행됩니다.
+
+API 요청은 Next.js 리라이트를 통해 백엔드로 프록시됩니다.
+
+## 빌드
+
+```bash
+npm run build
+```
+
+빌드는 `next.config.mjs`를 직접 사용합니다. 별도 config 변환이나 복원 절차가 필요하지 않습니다.
+
+## 기술 스택
+
+| 기술 | 버전 | 용도 |
+|------|------|------|
+| Next.js | 14.2.35 | React 프레임워크 (App Router) |
+| React | 18.3.1 | UI 라이브러리 |
+| TypeScript | 5.7.2 | 정적 타입 |
+| Tailwind CSS | 3.4.17 | 유틸리티 CSS |
+| Leaflet | 1.9.4 | 지도 (타임라인 마커) |
+| react-leaflet | 5.0.0 | Leaflet React 래퍼 (React 19 지원) |
+| @vnedyalk0v/react19-simple-maps | 2.0.7 | SVG 세계/국내 지도 (React 19 호환) |
+| Recharts | 3.8.1 | 통계 차트 |
+| Lucide React | 1.14.0 | 아이콘 |
+
+## 프로젝트 구조
+
+```
+src/
+├── app/               # App Router 페이지
+│   ├── (auth)/        # 인증 관련 페이지 (로그인, 회원가입)
+│   ├── (main)/        # 메인 레이아웃 페이지
+│   │   ├── page.tsx   # 홈 (지도 + 통계 요약)
+│   │   ├── trips/     # 여행 목록 및 상세
+│   │   ├── buckets/   # 버킷리스트
+│   │   ├── stats/     # 통계 대시보드
+│   │   └── profile/   # 프로필
+│   ├── layout.tsx     # 루트 레이아웃
+│   └── globals.css    # 전역 스타일
+├── components/        # 재사용 UI 컴포넌트
+│   ├── ui/            # 기본 UI (Button, Input, Card, ...)
+│   ├── maps/          # 지도 컴포넌트
+│   ├── checklist/     # 체크리스트 컴포넌트
+│   ├── timeline/      # 타임라인 컴포넌트
+│   └── photos/        # 사진 컴포넌트
+├── lib/               # 유틸리티
+│   ├── api/client.ts  # API 클라이언트
+│   ├── auth/          # 인증 관련 (context, hooks)
+│   └── utils.ts       # 공통 유틸
+├── types/
+│   └── travel.ts      # 공통 타입 정의
+└── public/            # 정적 파일
+```
+
+## 중요 참고 사항
+
+### 지도 컴포넌트
+
+지도 관련 컴포넌트는 브라우저 API(`window`, `document`, Leaflet DOM)에 의존하므로 반드시 `ssr: false`로 동적 임포트해야 합니다.
+
+```tsx
+import dynamic from "next/dynamic";
+
+const LeafletMap = dynamic(() => import("@/components/maps/LeafletMap"), {
+  ssr: false,
+});
+```
+
+### Lucide React `Map` 아이콘
+
+`Map` 아이콘은 JavaScript 전역 `Map` 생성자를 가립니다. 반드시 별칭으로 임포트하세요.
+
+```tsx
+import { Map as MapIcon } from "lucide-react";
+```
+
+## API 프록시 설정
+
+`next.config.mjs`의 `rewrites` 설정을 통해 `/api/*` 요청이 백엔드로 전달됩니다.
+
+```js
+{
+  source: "/api/:path*",
+  destination: "http://localhost:8080/api/:path*",
+}
+```
+
+`NEXT_PUBLIC_API_BASE_URL` 환경 변수로 백엔드 주소를 변경할 수 있습니다.
