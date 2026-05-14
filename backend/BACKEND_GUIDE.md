@@ -1,7 +1,7 @@
 # Travel Archive 백엔드 완벽 가이드
 
 > 대상 독자: Travel Archive 프로젝트를 읽으며 Spring Boot 백엔드를 배우는 주니어 개발자  
-> 기준 코드: Spring Boot 4.0.6, Java 25, JPA/Hibernate, Spring Security, JWT, Flyway, PostgreSQL/H2, Gradle  
+> 기준 코드: Spring Boot 4.0.6, Java 25, JPA/Hibernate, Spring Security, JWT, PostgreSQL, Gradle  
 > 학습 방식: “개념 → 이 프로젝트 코드 → 왜 이렇게 했는가 → 바꾸면 생기는 일” 순서로 읽는다.
 
 ---
@@ -61,10 +61,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-validation")
-    implementation("org.springframework.boot:spring-boot-starter-flyway")
-
     runtimeOnly("org.postgresql:postgresql")
-    runtimeOnly("com.h2database:h2")
 
     compileOnly("org.projectlombok:lombok")
     annotationProcessor("org.projectlombok:lombok")
@@ -132,7 +129,7 @@ testImplementation("org.springframework.boot:spring-boot-starter-data-jpa-test")
     <artifactId>spring-boot-starter-validation</artifactId>
 </dependency>
 <dependency>
-    <artifactId>flyway-core</artifactId>
+    <!-- Flyway 제거: JPA ddl-auto로 스키마 관리 -->
 </dependency>
 ```
 
@@ -140,9 +137,7 @@ testImplementation("org.springframework.boot:spring-boot-starter-data-jpa-test")
 - `security`: 인증/인가 필터 체인.
 - `data-jpa`: Entity와 Repository.
 - `validation`: `@Valid`, `@Email`, `@NotBlank`.
-- `flyway`: SQL 마이그레이션 자동 실행.
-- `postgresql`: 운영/기본 DB 드라이버.
-- `h2`: dev/test용 인메모리 DB.
+- `postgresql`: 운영/개발/테스트 통일 DB 드라이버.
 
 ## 004. 기본 환경 설정: PostgreSQL
 
@@ -158,8 +153,6 @@ spring:
     hibernate:
       ddl-auto: validate
     open-in-view: false
-  flyway:
-    enabled: true
 ```
 
 라인별 핵심:
@@ -167,7 +160,7 @@ spring:
 - `${DB_URL:...}`: 환경변수가 있으면 사용하고 없으면 기본값을 쓴다.
 - `ddl-auto: validate`: Hibernate가 테이블을 만들지 않고, Entity와 DB 스키마가 맞는지만 검증한다.
 - `open-in-view: false`: Controller 렌더링 시점까지 영속성 컨텍스트를 열어 두지 않는다. 서비스 안에서 필요한 데이터를 명시적으로 가져오라는 뜻이다.
-- `flyway.enabled: true`: 앱 시작 시 `db/migration` SQL을 순서대로 실행한다.
+- `ddl-auto: validate`: 운영 환경에서는 JPA가 엔티티와 DB 스키마 일치 여부만 검증한다.
 
 ## 005. 개발 환경: H2 dev profile
 
@@ -176,17 +169,17 @@ spring:
 ```yaml
 spring:
   datasource:
-    url: jdbc:h2:mem:travel_archive_dev;MODE=PostgreSQL;DB_CLOSE_DELAY=-1
-  h2:
-    console:
-      enabled: true
-      path: /h2-console
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/travel_archive}
+    username: ${DB_USERNAME:travel_archive}
+    password: ${DB_PASSWORD:travel_archive}
+  jpa:
+    hibernate:
+      ddl-auto: create
 ```
 
-- `MODE=PostgreSQL`: H2가 PostgreSQL과 비슷하게 SQL을 해석한다.
-- `DB_CLOSE_DELAY=-1`: 앱이 살아 있는 동안 메모리 DB를 유지한다.
-- 장점: PostgreSQL 없이 빠르게 실행 가능.
-- 단점: H2와 PostgreSQL은 100% 같지 않다. 운영 SQL은 PostgreSQL에서 반드시 확인해야 한다.
+- `ddl-auto: create`: JPA가 앱 실행 시 엔티티 기반으로 스키마를 자동 생성/재생성한다.
+- 장점: 수동 SQL 없이 JPA가 스키마를 자동으로 갱신한다.
+- 주의: 개발 중에는 편리하지만, 운영 환경에서는 `validate`를 사용한다.
 
 ## 006. 실행 방법
 
@@ -875,7 +868,7 @@ Trip에 `List<TripDay>`를 두지 않고 `TripDayRepository.findAllByTripId...`�
 
 ---
 
-# Part 5. 데이터 접근 계층과 Flyway
+# Part 5. 데이터 접근 계층과 JPA
 
 ## 048. `JpaRepository` 기본 기능
 
@@ -922,7 +915,7 @@ long countByTripIdAndOwnerType(Long tripId, PhotoOwnerType ownerType);
 - 커버 사진 최대 1장.
 - 저장 전에 현재 개수를 확인한다.
 
-## 051. Flyway V1: 스키마의 뼈대
+## 051. 스키마 설계 (JPA 엔티티 기반)
 
 `V1__init_schema.sql`은 모든 주요 테이블을 만든다.
 
@@ -960,7 +953,7 @@ CONSTRAINT ck_trips_scope_reference CHECK (
 
 이 제약 덕분에 “국내 여행인데 country_id가 들어감” 같은 모순을 DB가 차단한다.
 
-## 054. Flyway V2: 지도 참조 데이터
+## 054. 지도 참조 데이터 (seed)
 
 `countries`, `domestic_regions`에 지도 표시용 데이터를 seed한다.
 
@@ -968,7 +961,7 @@ CONSTRAINT ck_trips_scope_reference CHECK (
 - `domestic_regions.map_key`: 대한민국 지도 식별자.
 - `display_order`: UI 표시 순서.
 
-## 055. Flyway V3: 체크리스트 템플릿
+## 055. 체크리스트 템플릿 (seed)
 
 ```sql
 INSERT INTO travel_checklist_templates (travel_scope, title, display_order, active) VALUES
@@ -978,11 +971,11 @@ INSERT INTO travel_checklist_templates (travel_scope, title, display_order, acti
 
 국내/해외 각각 12개 준비물 항목이 들어간다.
 
-## 056. Flyway V4: 데모 데이터
+## 056. 데모 데이터 (seed)
 
 데모 계정과 샘플 여행/버킷/타임라인/사진 메타데이터를 넣는다. README의 `demo@example.com` 계정이 이 마이그레이션에서 나온다.
 
-## 057. Flyway V5: 버킷 동행자 컬럼
+## 057. 버킷 동행자 컬럼 추가
 
 ```sql
 ALTER TABLE bucket_places ADD COLUMN companion VARCHAR(100);
@@ -2077,16 +2070,14 @@ return ResponseEntity.status(201).body(...);
 @AutoConfigureMockMvc
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @TestPropertySource(properties = {
-    "spring.datasource.url=jdbc:h2:mem:...;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH",
-    "spring.jpa.hibernate.ddl-auto=validate",
-    "spring.flyway.enabled=true",
+    "spring.jpa.hibernate.ddl-auto=create",
     "jwt.secret=test-jwt-secret-..."
 })
 ```
 
 - 실제 Spring Context를 띄운다.
 - MockMvc로 HTTP 요청을 흉내 낸다.
-- H2에 Flyway 마이그레이션을 적용한다.
+- PostgreSQL에 JPA가 스키마를 생성한다.
 
 ## 140. `AuthControllerTest`
 
@@ -2144,7 +2135,7 @@ return ResponseEntity.status(201).body(...);
 - 지도 집계 SQL이 예상 상태 우선순위를 반환한다.
 - 통계 집계가 완료 여행 기준으로 계산된다.
 - 타임라인이 여행 기간 내 날짜만 허용한다.
-- Flyway schema가 H2 PostgreSQL 모드에서 검증된다.
+- JPA가 PostgreSQL에 스키마를 생성한다.
 - Spring Context가 정상 기동한다.
 
 ---
@@ -2451,8 +2442,9 @@ Trip/Bucket 상태 변경 이력을 별도 테이블에 저장하면 감사 추�
 ## 232. `ddl-auto=validate`의 의미는?
 Hibernate가 스키마를 만들지 않고 Entity와 DB가 맞는지만 검증한다.
 
-## 233. Flyway가 필요한 이유는?
-DB 스키마 변경을 버전 관리하고, 환경마다 같은 순서로 적용하기 위해서다.
+## 233. `ddl-auto=create`와 `validate`의 차이는?
+- `create`: JPA가 앱 실행 시 엔티티 기반으로 스키마를 자동 생성/재생성한다.
+- `validate`: JPA가 엔티티와 기존 DB 스키마가 일치하는지만 검증한다.
 
 ## 234. DTO를 쓰는 이유는?
 Entity 내부 구조와 API 계약을 분리하고 민감 필드 노출을 막기 위해서다.
@@ -2575,16 +2567,16 @@ Trip 생성자의 기본 상태가 PLANNED이며, Bucket status의 BOOKED는 버
 HTTP 처리와 비즈니스 로직을 분리해 테스트와 유지보수를 쉽게 하기 위해서다.
 
 ## 274. Service 테스트 대신 통합 테스트가 많은 이유는?
-Security, Flyway, JPA, HTTP 응답까지 실제 흐름을 확인하기 위해서다.
+Security, JPA, PostgreSQL, HTTP 응답까지 실제 흐름을 확인하기 위해서다.
 
-## 275. H2 테스트의 한계는?
-PostgreSQL과 SQL 동작이 완전히 같지 않을 수 있다.
+## 275. PostgreSQL 테스트의 장점은?
+로컬 개발과 운영 환경이 동일한 DB를 사용하므로 SQL 동작 차이가 없다.
 
-## 276. `DATABASE_TO_LOWER=TRUE`는 왜 테스트 URL에 있나?
-H2에서 테이블/컬럼 이름 대소문자 차이로 인한 문제를 줄이기 위해서다.
+## 276. 테스트용 DB 스키마는 어떻게 관리하나?
+`@TestPropertySource`로 `spring.jpa.hibernate.ddl-auto=create`를 설정하여 JPA가 테스트 전용 스키마를 자동 생성한다.
 
-## 277. `DEFAULT_NULL_ORDERING=HIGH`는?
-정렬 시 null 처리 차이를 PostgreSQL에 가깝게 맞추기 위한 설정이다.
+## 277. `ddl-auto=create`로 인한 테스트 격리는 어떻게 하나?
+`@Transactional`을 사용하여 각 테스트 후 데이터를 롤백하거나, `@DirtiesContext`로 애플리케이션 컨텍스트를 재생성한다.
 
 ## 278. DTO 내부 record의 장점은?
 특정 응답에만 쓰이는 작은 구조를 가까운 곳에 둘 수 있다.

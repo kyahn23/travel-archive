@@ -24,10 +24,9 @@
 
 | 기술 | 선정 이유 |
 |---|---|
-| **Spring Boot 4.0.6 + Java 25** | REST API, 보안, JPA, Flyway 기반 풀스택 포트폴리오에 적합 |
-| **JPA** | 사용자·여행·타임라인·체크리스트 관계 모델을 객체로 표현 |
-| **Flyway** | DB 스키마와 seed 데이터를 코드로 버전 관리 |
-| **PostgreSQL 16 / H2** | 관계형 집계 쿼리(지Map/통계)에 안정적. H2는 빠른 로컬 개발용 |
+| **Spring Boot 4.0.6 + Java 25** | REST API, 보안, JPA 기반 풀스택 포트폴리오에 적합 |
+| **JPA (Hibernate)** | 사용자·여행·타임라인·체크리스트 관계 모델을 객체로 표현. DDL 자동 생성 |
+| **PostgreSQL 16** | 관계형 집계 쿼리(지Map/통계)에 안정적. Docker로 로컬/운영 환경 통일 |
 | **JWT httpOnly Cookie** | XSS 방어 + 토큰 탈취 위험 감소 + 자동 인증 전달 |
 
 ### 프론트엔드
@@ -152,20 +151,27 @@ travel_checklists 1:N travel_checklist_items
 
 ---
 
-## 슬라이드 7: Flyway 마이그레이션 + 인증 설계 (1분)
+## 슬라이드 7: 데이터베이스 설정 + 인증 설계 (1분)
 
-### Flyway
+### PostgreSQL 설정 전략
 
+```yaml
+# docker-compose.yml (로컬 개발 & 운영 통일)
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: travel_archive
+      POSTGRES_USER: travel_archive
+      POSTGRES_PASSWORD: travel_archive
+    ports:
+      - "5432:5432"
 ```
-V1__init_schema.sql              # 기본 스키마, 제약, 인덱스
-V2__seed_reference_data.sql      # 국가/국내 지역 seed
-V3__seed_checklist_templates.sql # 체크리스트 템플릿
-V4__demo_seed.sql               # 데모 계정 + 샘플 데이터
-V5__add_bucket_companion.sql     # 버킷 확장
-```
 
-- 이미 배포된 migration은 수정 불가 → 새 버전만 추가
-- Docker PostgreSQL + H2 dev 모두 동일 마이그레이션 적용
+- **JPA ddl-auto**: `update` (개발) → 운영 시 `validate` 또는 수동 DDL
+- **로컬/운영 환경 통일**: Docker PostgreSQL로 모든 개발자 동일한 DB 상태 유지
+- **Seed 데이터**: `data.sql` 또는 JPA `CommandLineRunner`로 초기 데이터 삽입
+- **스키마 변경**: 버전 관리 필요 시 JPA 엔티티 기반 재생성, 복잡한 변경은 수동 DDL
 
 ### 인증: JWT + httpOnly Cookie
 

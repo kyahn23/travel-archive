@@ -89,7 +89,7 @@ docker compose ps
 # 중지 (데이터 유지)
 docker compose down
 
-# 중지 + 데이터 초기화 (Flyway 마이그레이션부터 다시)
+# 중지 + 데이터 초기화
 docker compose down -v
 ```
 
@@ -130,17 +130,15 @@ docker run -d \
 
 ## 실행 방법
 
-### 빠른 로컬 개발 모드 (H2)
+### 로컬 개발 모드 (Docker PostgreSQL)
 
-PostgreSQL 없이 H2 메모리 DB와 Flyway seed 데이터로 실행합니다.
+Docker PostgreSQL을 사용하는 dev profile로 실행합니다. JPA가 스키마를 자동 생성합니다.
 
 ```bash
 ./gradlew bootRun --args='--spring.profiles.active=dev'
 ```
 
-H2 콘솔은 `http://localhost:8080/h2-console`에서 사용할 수 있습니다. JDBC URL은 `jdbc:h2:mem:travel_archive_dev`입니다.
-
-### PostgreSQL 개발 모드
+dev profile은 `ddl-auto: create`로 설정되어 있어 앱 실행 시 JPA가 엔티티 기반으로 스키마를 자동 생성합니다.
 
 ```bash
 ./gradlew bootRun
@@ -170,7 +168,7 @@ java -jar build/libs/travel-archive-0.0.1-SNAPSHOT.jar
 | `Connection refused` (DB) | PostgreSQL 컨테이너가 아직 준비되지 않음 | `docker compose ps`로 `healthy` 상태 확인 후 재시도 |
 | `Permission denied` (gradlew) | 실행 권한 없음 | `chmod +x ./gradlew` |
 | `JWT secret is not configured` | `JWT_SECRET` 미설정 | `export JWT_SECRET="your-32-char-secret-key"` |
-| `Flyway migration failed` | 이전 마이그레이션과 현재 스키마 불일치 | `docker compose down -v`로 DB 초기화 후 재시작 |
+| `Connection refused` (DB) | PostgreSQL 컨테이너가 아직 준비되지 않음 | `docker compose ps`로 `healthy` 상태 확인 후 재시도 |
 | `npm install`이 느림 | 네트워크 또는 레지스트리 문제 | `npm config set registry https://registry.npmjs.org` |
 
 ## API 개요
@@ -219,19 +217,16 @@ java -jar build/libs/travel-archive-0.0.1-SNAPSHOT.jar
 backend/storage/uploads/{userId}/{tripId}/
 ```
 
-## 데이터베이스 마이그레이션
+## 데이터베이스 스키마
 
-Flyway로 관리됩니다. 마이그레이션 파일 위치:
+JPA/Hibernate가 엔티티 기반으로 스키마를 자동 생성합니다.
 
-```
-src/main/resources/db/migration/
-├── V1__init_schema.sql
-├── V2__seed_reference_data.sql
-├── V3__seed_checklist_templates.sql
-└── V4__demo_seed.sql
-```
+| 프로필 | `ddl-auto` | 설명 |
+|---|---|---|
+| 기본 (운영) | `validate` | 엔티티와 DB 스키마 일치 여부만 검증 |
+| dev (로컬) | `create` | 앱 실행 시 스키마를 자동 생성/재생성 |
 
-`V4__demo_seed.sql`에는 `demo@example.com` / `password` 데모 계정과 완료 여행 4개(국내 2, 해외 2), 예정 여행 1개, 버킷리스트 3개, 좌표가 포함된 타임라인, 체크리스트, 데모 사진 메타데이터가 포함됩니다.
+로컬 개발 시 `docker compose up -d`로 PostgreSQL을 먼저 실행한 후 `./gradlew bootRun --args='--spring.profiles.active=dev'`로 실행하세요.
 
 ## 인증 방식
 
