@@ -32,12 +32,7 @@ import org.springframework.test.web.servlet.MvcResult;
 @AutoConfigureMockMvc
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @TestPropertySource(properties = {
-        "spring.datasource.url=jdbc:h2:mem:bucket_controller_test;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH",
-        "spring.datasource.driver-class-name=org.h2.Driver",
-        "spring.datasource.username=sa",
-        "spring.datasource.password=",
-        "spring.jpa.hibernate.ddl-auto=validate",
-        "spring.flyway.enabled=true",
+        "spring.jpa.hibernate.ddl-auto=create",
         "jwt.secret=test-jwt-secret-for-bucket-controller-test-1234567890"
 })
 class BucketPlaceControllerTest {

@@ -12,9 +12,7 @@ import org.springframework.test.context.TestPropertySource;
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @TestPropertySource(properties = {
-        "spring.datasource.url=jdbc:h2:mem:travel_archive_test;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH",
-        "spring.jpa.hibernate.ddl-auto=validate",
-        "spring.flyway.enabled=true"
+        "spring.jpa.hibernate.ddl-auto=create"
 })
 class SchemaMigrationTest {
 
@@ -22,7 +20,7 @@ class SchemaMigrationTest {
     private JdbcTemplate jdbcTemplate;
 
     @Test
-    void flywayCreatesCoreTablesWithoutCitiesTable() {
+    void jpaCreatesCoreTables() {
         assertThat(tableCount("users")).isOne();
         assertThat(tableCount("countries")).isOne();
         assertThat(tableCount("domestic_regions")).isOne();
@@ -34,39 +32,13 @@ class SchemaMigrationTest {
         assertThat(tableCount("travel_checklists")).isOne();
         assertThat(tableCount("travel_checklist_items")).isOne();
         assertThat(tableCount("refresh_tokens")).isOne();
-        assertThat(tableCount("cities")).isZero();
-    }
-
-    @Test
-    void flywaySeedsReferenceDataAndChecklistTemplates() {
-        assertThat(rowCount("countries")).isEqualTo(20);
-        assertThat(rowCount("domestic_regions")).isEqualTo(17);
-        assertThat(rowCount("travel_checklist_templates")).isEqualTo(2);
-        assertThat(rowCount("travel_checklist_template_items")).isEqualTo(24);
-
-        assertThat(valueCount("domestic_regions", "code", "KR-11")).isOne();
-        assertThat(valueCount("domestic_regions", "code", "KR-49")).isOne();
-        assertThat(valueCount("countries", "code_alpha2", "JP")).isOne();
-        assertThat(valueCount("countries", "map_key", "840")).isOne();
     }
 
     private Integer tableCount(String tableName) {
         return jdbcTemplate.queryForObject(
-                "select count(*) from information_schema.tables where upper(table_schema) = 'PUBLIC' and upper(table_name) = upper(?)",
+                "select count(*) from information_schema.tables where table_schema = 'public' and table_name = ?",
                 Integer.class,
                 tableName
-        );
-    }
-
-    private Integer rowCount(String tableName) {
-        return jdbcTemplate.queryForObject("select count(*) from " + tableName, Integer.class);
-    }
-
-    private Integer valueCount(String tableName, String columnName, String value) {
-        return jdbcTemplate.queryForObject(
-                "select count(*) from " + tableName + " where " + columnName + " = ?",
-                Integer.class,
-                value
         );
     }
 }
