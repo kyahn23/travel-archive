@@ -395,10 +395,17 @@ PRD/디자인 문서의 대표 색상은 `PrimaryCoral #FF6B6B`, `PrimaryTeal #4
   - /login
   - /signup
 
+공개 홈: /
+  - 비로그인 접근 가능
+  - 샘플 데이터 기반 미리보기
+  - 가입/로그인 CTA
+
 로그인 후: /(main)/layout.tsx
   - 모바일: BottomNav
   - 웹: Sidebar
   - 공통: 인증 요구 hook, safe-area, content padding
+  - /dashboard (홈 대시보드)
+  - /trips, /bucket, /stats, /profile
 ```
 
 ### 4.2 홈 대시보드
@@ -407,7 +414,7 @@ PRD/디자인 문서의 대표 색상은 `PrimaryCoral #FF6B6B`, `PrimaryTeal #4
 |---|---|
 | 목적 | 전체 여행 현황을 지도와 핵심 숫자로 보여준다 |
 | 목업 | `mobile_home.png`, `mobile_home_bottomsheet.png`, `web_home.png`, `web_home_drawer.png` |
-| 구현 파일 | `frontend/src/app/(main)/page.tsx` |
+| 구현 파일 | `frontend/src/app/page.tsx` (공개 홈), `frontend/src/app/(main)/dashboard/page.tsx` (로그인 후 대시보드) |
 | 주요 컴포넌트 | `WorldMap`, `KoreaMap`, `PageHeader`, `Card`, `Badge`, 지도 범례 |
 | API | `GET /api/maps/world`, `GET /api/maps/domestic`, `GET /api/maps/regions/{mapKey}`, `GET /api/statistics/summary` |
 | 상태 | `mapView`, `worldData`, `domesticData`, `statsSummary`, `loading`, `error` |
@@ -676,7 +683,7 @@ MVP에서는 복잡한 설정을 만들지 않는다. 향후 PWA 설치 안내, 
 -> User 생성 + BCrypt password_hash 저장
 -> Access/Refresh JWT 발급
 -> Set-Cookie(access_token, refresh_token)
--> 홈 대시보드 이동
+-> /dashboard 이동
 ```
 
 ```txt
@@ -1433,7 +1440,8 @@ PhotoOwnerType: TRIP_COVER, TIMELINE_ITEM
 ```txt
 /login
 /signup
-/
+/          # 공개 홈 (비로그인 미리보기)
+/dashboard # 로그인 후 홈 대시보드
 /trips
 /trips/{tripId}
 /bucket
@@ -1454,7 +1462,7 @@ PhotoOwnerType: TRIP_COVER, TIMELINE_ITEM
 /api/statistics/summary
 ```
 
-### 15.4 가장 중요한 코드 파일 30개
+### 15.4 가장 중요한 코드 파일 31개
 
 | 순번 | 파일 | 이유 |
 |---:|---|---|
@@ -1476,18 +1484,19 @@ PhotoOwnerType: TRIP_COVER, TIMELINE_ITEM
 | 16 | `frontend/src/lib/auth/context.tsx` | 인증 상태 |
 | 17 | `frontend/src/lib/auth/hooks.ts` | 인증 guard |
 | 18 | `frontend/src/types/travel.ts` | 프론트 API 타입 |
-| 19 | `frontend/src/app/(main)/page.tsx` | 홈 지도 대시보드 |
-| 20 | `frontend/src/app/(main)/trips/page.tsx` | 여행 목록/생성 |
-| 21 | `frontend/src/app/(main)/trips/[tripId]/page.tsx` | 여행 상세 |
-| 22 | `frontend/src/app/(main)/bucket/page.tsx` | 버킷리스트 |
-| 23 | `frontend/src/app/(main)/stats/page.tsx` | 통계 |
-| 24 | `frontend/src/app/(main)/profile/page.tsx` | 마이페이지 |
-| 25 | `frontend/src/components/maps/WorldMap.tsx` | 세계지도 |
-| 26 | `frontend/src/components/maps/KoreaMap.tsx` | 국내지도 |
-| 27 | `frontend/src/components/maps/LeafletMap.tsx` | 상세 지도 |
-| 28 | `frontend/src/components/checklist/ChecklistView.tsx` | 체크리스트 UI |
-| 29 | `frontend/src/components/timeline/TimelineView.tsx` | 타임라인 UI |
-| 30 | `frontend/src/styles/tokens.ts` | 디자인 토큰 |
+| 19 | `frontend/src/app/page.tsx` | 공개 홈 (비로그인 미리보기) |
+| 20 | `frontend/src/app/(main)/dashboard/page.tsx` | 홈 지도 대시보드 (로그인 후) |
+| 21 | `frontend/src/app/(main)/trips/page.tsx` | 여행 목록/생성 |
+| 22 | `frontend/src/app/(main)/trips/[tripId]/page.tsx` | 여행 상세 |
+| 23 | `frontend/src/app/(main)/bucket/page.tsx` | 버킷리스트 |
+| 24 | `frontend/src/app/(main)/stats/page.tsx` | 통계 |
+| 25 | `frontend/src/app/(main)/profile/page.tsx` | 마이페이지 |
+| 26 | `frontend/src/components/maps/WorldMap.tsx` | 세계지도 |
+| 27 | `frontend/src/components/maps/KoreaMap.tsx` | 국내지도 |
+| 28 | `frontend/src/components/maps/LeafletMap.tsx` | 상세 지도 |
+| 29 | `frontend/src/components/checklist/ChecklistView.tsx` | 체크리스트 UI |
+| 30 | `frontend/src/components/timeline/TimelineView.tsx` | 타임라인 UI |
+| 31 | `frontend/src/styles/tokens.ts` | 디자인 토큰 |
 
 ---
 

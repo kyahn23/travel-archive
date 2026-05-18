@@ -51,16 +51,18 @@ npm run build
 src/
 ├── app/               # App Router 페이지
 │   ├── (auth)/        # 인증 관련 페이지 (로그인, 회원가입)
-│   ├── (main)/        # 메인 레이아웃 페이지
-│   │   ├── page.tsx   # 홈 (지도 + 통계 요약)
+│   ├── (main)/        # 메인 레이아웃 페이지 (로그인 필요)
+│   │   ├── dashboard/page.tsx  # 대시보드 (지도 + 통계 요약)
 │   │   ├── trips/     # 여행 목록 및 상세
-│   │   ├── buckets/   # 버킷리스트
+│   │   ├── bucket/    # 버킷리스트
 │   │   ├── stats/     # 통계 대시보드
 │   │   └── profile/   # 프로필
+│   ├── page.tsx       # 공개 홈 (비로그인 미리보기)
 │   ├── layout.tsx     # 루트 레이아웃
 │   └── globals.css    # 전역 스타일
 ├── components/        # 재사용 UI 컴포넌트
 │   ├── ui/            # 기본 UI (Button, Input, Card, ...)
+│   ├── home/          # 홈 공통 컴포넌트 (HomeOverview 등)
 │   ├── maps/          # 지도 컴포넌트
 │   ├── checklist/     # 체크리스트 컴포넌트
 │   ├── timeline/      # 타임라인 컴포넌트
@@ -68,6 +70,7 @@ src/
 ├── lib/               # 유틸리티
 │   ├── api/client.ts  # API 클라이언트
 │   ├── auth/          # 인증 관련 (context, hooks)
+│   ├── home/          # 홈 데모 데이터
 │   └── utils.ts       # 공통 유틸
 ├── types/
 │   └── travel.ts      # 공통 타입 정의
@@ -75,6 +78,13 @@ src/
 ```
 
 ## 중요 참고 사항
+
+### 라우팅 변경 (2026-05-18)
+
+- `/`는 이제 **비로그인 공개 홈**입니다. 샘플 데이터 기반 미리보기와 가입/로그인 유도 CTA를 제공합니다.
+- `/dashboard`는 **로그인 후 홈 대시보드**입니다. 실제 사용자 API 데이터를 표시합니다.
+- 로그인/회원가입 성공 후 이동 경로는 `/dashboard`입니다.
+- `AuthProvider`의 초기 `/auth/me` 요청은 401 응답 시 자동으로 `/login`으로 리다이렉트하지 않습니다.
 
 ### 지도 컴포넌트
 
