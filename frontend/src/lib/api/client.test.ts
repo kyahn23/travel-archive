@@ -63,4 +63,14 @@ describe('ApiClient', () => {
 
     expect(window.location.href).toBe('/login');
   });
+
+  it('throws on 401 without redirect when disabled', async () => {
+    vi.mocked(fetch).mockResolvedValue(new Response('Unauthorized', { status: 401 }));
+    window.history.pushState({}, '', '/dashboard');
+    const before = window.location.href;
+
+    await expect(new ApiClient('/api').get('/me', false)).rejects.toBeInstanceOf(ApiError);
+
+    expect(window.location.href).toBe(before);
+  });
 });

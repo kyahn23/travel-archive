@@ -13,7 +13,7 @@ import {
 import { cn } from "@/lib/utils";
 
 const sidebarItems = [
-  { href: "/", label: "홈", icon: Home },
+  { href: "/dashboard", label: "홈", icon: Home },
   { href: "/trips", label: "여행 기록", icon: Map },
   { href: "/bucket", label: "버킷리스트", icon: Heart },
   { href: "/stats", label: "통계", icon: BarChart3 },
@@ -38,7 +38,7 @@ export function Sidebar() {
         <ul className="flex flex-col gap-1">
           {sidebarItems.map(({ href, label, icon: Icon }) => {
             const isActive =
-              href === "/" ? pathname === "/" : (pathname ?? "").startsWith(href);
+              href === "/dashboard" ? pathname === "/dashboard" || (pathname?.startsWith("/dashboard/") ?? false) : (pathname ?? "").startsWith(href);
 
             return (
               <li key={href}>

@@ -37,6 +37,7 @@ export class ApiClient {
   async request<T>(
     path: string, // `: string` 은 경로가 문자열이어야 함을 명시합니다.
     options: RequestInit = {}, // `RequestInit` 은 fetch 옵션 객체의 표준 타입입니다.
+    redirectOnUnauthorized = true,
   ): Promise<ApiResponse<T>> {
     // `Promise<ApiResponse<T>>` 는 비동기 작업이 끝나면 `ApiResponse<T>` 를 반환한다는 뜻입니다.
     // 여기서도 `T` 는 호출할 때 결정되는 제네릭 타입입니다.
@@ -59,7 +60,12 @@ export class ApiClient {
 
     if (res.status === 401) {
       // Don't redirect if already on an auth page to avoid loops
-      if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login") && !window.location.pathname.startsWith("/signup")) {
+      if (
+        redirectOnUnauthorized &&
+        typeof window !== "undefined" &&
+        !window.location.pathname.startsWith("/login") &&
+        !window.location.pathname.startsWith("/signup")
+      ) {
         window.location.href = "/login";
       }
       throw new ApiError(401, "Unauthorized");
@@ -83,33 +89,33 @@ export class ApiClient {
   }
 
   // 제네릭 메서드는 호출하는 쪽이 원하는 데이터 타입을 넣을 수 있게 해줍니다.
-  get<T>(path: string) {
-    return this.request<T>(path, { method: "GET" });
+  get<T>(path: string, redirectOnUnauthorized = true) {
+    return this.request<T>(path, { method: "GET" }, redirectOnUnauthorized);
   }
 
-  post<T>(path: string, body?: unknown) {
+  post<T>(path: string, body?: unknown, redirectOnUnauthorized = true) {
     return this.request<T>(path, {
       method: "POST",
       body: body !== undefined ? JSON.stringify(body) : undefined,
-    });
+    }, redirectOnUnauthorized);
   }
 
-  put<T>(path: string, body?: unknown) {
+  put<T>(path: string, body?: unknown, redirectOnUnauthorized = true) {
     return this.request<T>(path, {
       method: "PUT",
       body: body !== undefined ? JSON.stringify(body) : undefined,
-    });
+    }, redirectOnUnauthorized);
   }
 
-  patch<T>(path: string, body?: unknown) {
+  patch<T>(path: string, body?: unknown, redirectOnUnauthorized = true) {
     return this.request<T>(path, {
       method: "PATCH",
       body: body !== undefined ? JSON.stringify(body) : undefined,
-    });
+    }, redirectOnUnauthorized);
   }
 
-  delete<T>(path: string) {
-    return this.request<T>(path, { method: "DELETE" });
+  delete<T>(path: string, redirectOnUnauthorized = true) {
+    return this.request<T>(path, { method: "DELETE" }, redirectOnUnauthorized);
   }
 }
 

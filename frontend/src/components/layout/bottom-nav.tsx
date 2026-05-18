@@ -12,7 +12,7 @@ import {
 import { cn } from "@/lib/utils";
 
 const navItems = [
-  { href: "/", label: "홈", icon: Home },
+  { href: "/dashboard", label: "홈", icon: Home },
   { href: "/trips", label: "여행", icon: Map },
   { href: "/bucket", label: "버킷", icon: Heart },
   { href: "/stats", label: "통계", icon: BarChart3 },
@@ -29,7 +29,7 @@ export function BottomNav() {
       <ul className="flex h-16 items-center justify-around px-2">
         {navItems.map(({ href, label, icon: Icon }) => {
           const isActive =
-            href === "/" ? pathname === "/" : pathname?.startsWith(href) ?? false;
+            href === "/dashboard" ? pathname === "/dashboard" || (pathname?.startsWith("/dashboard/") ?? false) : pathname?.startsWith(href) ?? false;
 
           return (
             <li key={href}>

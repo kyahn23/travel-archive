@@ -74,7 +74,7 @@ export default function SignupPage() {
     setPending(true);
     try {
       await signup(email.trim(), password, nickname.trim());
-      router.replace("/");
+      router.replace("/dashboard");
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.status === 409 || err.body.includes("duplicate") || err.body.includes("already")) {

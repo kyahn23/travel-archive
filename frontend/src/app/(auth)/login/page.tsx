@@ -59,7 +59,7 @@ export default function LoginPage() {
     setPending(true);
     try {
       await login(email.trim(), password);
-      router.replace("/");
+      router.replace("/dashboard");
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.status === 401 ? "이메일 또는 비밀번호가 일치하지 않습니다." : err.body);
