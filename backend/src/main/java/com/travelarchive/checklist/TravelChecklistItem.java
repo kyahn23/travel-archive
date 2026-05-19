@@ -1,5 +1,6 @@
 package com.travelarchive.checklist;
 
+import com.travelarchive.common.entity.BaseEntity;
 import com.travelarchive.common.enums.ChecklistItemStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -13,11 +14,15 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "travel_checklist_items")
-public class TravelChecklistItem {
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class TravelChecklistItem extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -42,15 +47,6 @@ public class TravelChecklistItem {
     @Column(name = "due_date")
     private LocalDate dueDate;
 
-    @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
-    private LocalDateTime createdAt;
-
-    @Column(name = "updated_at", nullable = false, insertable = false)
-    private LocalDateTime updatedAt;
-
-    protected TravelChecklistItem() {
-    }
-
     public TravelChecklistItem(TravelChecklist checklist, String category, String content, Integer sortOrder, LocalDate dueDate) {
         this.checklist = checklist;
         this.category = category;
@@ -66,41 +62,5 @@ public class TravelChecklistItem {
 
     public void toggleStatus() {
         this.status = this.status == ChecklistItemStatus.DONE ? ChecklistItemStatus.TODO : ChecklistItemStatus.DONE;
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public TravelChecklist getChecklist() {
-        return checklist;
-    }
-
-    public String getCategory() {
-        return category;
-    }
-
-    public String getContent() {
-        return content;
-    }
-
-    public ChecklistItemStatus getStatus() {
-        return status;
-    }
-
-    public Integer getSortOrder() {
-        return sortOrder;
-    }
-
-    public LocalDate getDueDate() {
-        return dueDate;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public LocalDateTime getUpdatedAt() {
-        return updatedAt;
     }
 }

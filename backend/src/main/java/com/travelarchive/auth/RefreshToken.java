@@ -1,5 +1,6 @@
 package com.travelarchive.auth;
 
+import com.travelarchive.common.entity.BaseEntity;
 import com.travelarchive.user.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -11,10 +12,15 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "refresh_tokens")
-public class RefreshToken {
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class RefreshToken extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -32,40 +38,10 @@ public class RefreshToken {
     @Column(name = "revoked_at")
     private LocalDateTime revokedAt;
 
-    @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
-    private LocalDateTime createdAt;
-
-    protected RefreshToken() {
-    }
-
     public RefreshToken(User user, String tokenHash, LocalDateTime expiresAt) {
         this.user = user;
         this.tokenHash = tokenHash;
         this.expiresAt = expiresAt;
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public User getUser() {
-        return user;
-    }
-
-    public String getTokenHash() {
-        return tokenHash;
-    }
-
-    public LocalDateTime getExpiresAt() {
-        return expiresAt;
-    }
-
-    public LocalDateTime getRevokedAt() {
-        return revokedAt;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
     }
 
     public boolean isActive(LocalDateTime now) {

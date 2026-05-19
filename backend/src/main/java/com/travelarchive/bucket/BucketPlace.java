@@ -1,5 +1,6 @@
 package com.travelarchive.bucket;
 
+import com.travelarchive.common.entity.BaseEntity;
 import com.travelarchive.common.enums.BucketStatus;
 import com.travelarchive.common.enums.TravelScope;
 import com.travelarchive.map.Country;
@@ -17,11 +18,15 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "bucket_places")
-public class BucketPlace {
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class BucketPlace extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -73,15 +78,6 @@ public class BucketPlace {
     @Column(columnDefinition = "TEXT")
     private String memo;
 
-    @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
-    private LocalDateTime createdAt;
-
-    @Column(name = "updated_at", nullable = false, insertable = false)
-    private LocalDateTime updatedAt;
-
-    protected BucketPlace() {
-    }
-
     public BucketPlace(User user, String title, TravelScope travelScope, Country country, DomesticRegion domesticRegion,
                         String cityName, String reason, BigDecimal expectedBudget, String desiredSeason,
                         String companion, Integer priority, BucketStatus status, String referenceUrl, String memo) {
@@ -110,73 +106,5 @@ public class BucketPlace {
 
     public void changeStatus(BucketStatus status) {
         this.status = status;
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public User getUser() {
-        return user;
-    }
-
-    public String getTitle() {
-        return title;
-    }
-
-    public TravelScope getTravelScope() {
-        return travelScope;
-    }
-
-    public Country getCountry() {
-        return country;
-    }
-
-    public DomesticRegion getDomesticRegion() {
-        return domesticRegion;
-    }
-
-    public String getCityName() {
-        return cityName;
-    }
-
-    public String getReason() {
-        return reason;
-    }
-
-    public BigDecimal getExpectedBudget() {
-        return expectedBudget;
-    }
-
-    public String getDesiredSeason() {
-        return desiredSeason;
-    }
-
-    public String getCompanion() {
-        return companion;
-    }
-
-    public Integer getPriority() {
-        return priority;
-    }
-
-    public BucketStatus getStatus() {
-        return status;
-    }
-
-    public String getReferenceUrl() {
-        return referenceUrl;
-    }
-
-    public String getMemo() {
-        return memo;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public LocalDateTime getUpdatedAt() {
-        return updatedAt;
     }
 }

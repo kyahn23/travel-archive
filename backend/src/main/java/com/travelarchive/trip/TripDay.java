@@ -1,5 +1,6 @@
 package com.travelarchive.trip;
 
+import com.travelarchive.common.entity.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -10,10 +11,15 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.LocalDate;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "trip_days")
-public class TripDay {
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class TripDay extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -34,38 +40,11 @@ public class TripDay {
     @Column(columnDefinition = "TEXT")
     private String memo;
 
-    protected TripDay() {
-    }
-
     public TripDay(Trip trip, Integer dayNo, LocalDate travelDate, String title, String memo) {
         this.trip = trip;
         this.dayNo = dayNo;
         this.travelDate = travelDate;
         this.title = title;
         this.memo = memo;
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public Trip getTrip() {
-        return trip;
-    }
-
-    public Integer getDayNo() {
-        return dayNo;
-    }
-
-    public LocalDate getTravelDate() {
-        return travelDate;
-    }
-
-    public String getTitle() {
-        return title;
-    }
-
-    public String getMemo() {
-        return memo;
     }
 }

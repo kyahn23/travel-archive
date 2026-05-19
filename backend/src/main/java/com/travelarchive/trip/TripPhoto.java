@@ -1,5 +1,6 @@
 package com.travelarchive.trip;
 
+import com.travelarchive.common.entity.BaseEntity;
 import com.travelarchive.common.enums.PhotoOwnerType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -12,11 +13,15 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import java.time.LocalDateTime;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "trip_photos")
-public class TripPhoto {
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class TripPhoto extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -54,12 +59,6 @@ public class TripPhoto {
     @Column(name = "sort_order", nullable = false)
     private Integer sortOrder = 0;
 
-    @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
-    private LocalDateTime createdAt;
-
-    protected TripPhoto() {
-    }
-
     public TripPhoto(Trip trip, TripTimelineItem timelineItem, PhotoOwnerType ownerType, String storageKey,
                      String fileUrl, String originalFileName, String contentType, Long fileSize, String caption,
                      Integer sortOrder) {
@@ -73,53 +72,5 @@ public class TripPhoto {
         this.fileSize = fileSize;
         this.caption = caption;
         this.sortOrder = sortOrder == null ? 0 : sortOrder;
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public Trip getTrip() {
-        return trip;
-    }
-
-    public TripTimelineItem getTimelineItem() {
-        return timelineItem;
-    }
-
-    public PhotoOwnerType getOwnerType() {
-        return ownerType;
-    }
-
-    public String getStorageKey() {
-        return storageKey;
-    }
-
-    public String getFileUrl() {
-        return fileUrl;
-    }
-
-    public String getOriginalFileName() {
-        return originalFileName;
-    }
-
-    public String getContentType() {
-        return contentType;
-    }
-
-    public Long getFileSize() {
-        return fileSize;
-    }
-
-    public String getCaption() {
-        return caption;
-    }
-
-    public Integer getSortOrder() {
-        return sortOrder;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
     }
 }

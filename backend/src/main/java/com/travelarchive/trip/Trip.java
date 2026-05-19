@@ -1,6 +1,7 @@
 package com.travelarchive.trip;
 
 import com.travelarchive.bucket.BucketPlace;
+import com.travelarchive.common.entity.BaseEntity;
 import com.travelarchive.common.enums.TravelScope;
 import com.travelarchive.common.enums.TripStatus;
 import com.travelarchive.map.Country;
@@ -18,11 +19,15 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "trips")
-public class Trip {
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class Trip extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -72,15 +77,6 @@ public class Trip {
     @Column(columnDefinition = "TEXT")
     private String summary;
 
-    @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
-    private LocalDateTime createdAt;
-
-    @Column(name = "updated_at", nullable = false, insertable = false)
-    private LocalDateTime updatedAt;
-
-    protected Trip() {
-    }
-
     public Trip(User user, String title, TravelScope travelScope, Country country, DomesticRegion domesticRegion,
                 String cityName, LocalDate startDate, LocalDate endDate, String travelType, String companion,
                 String summary) {
@@ -112,69 +108,5 @@ public class Trip {
 
     public void changeStatus(TripStatus status) {
         this.status = status;
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public User getUser() {
-        return user;
-    }
-
-    public BucketPlace getBucketPlace() {
-        return bucketPlace;
-    }
-
-    public String getTitle() {
-        return title;
-    }
-
-    public TravelScope getTravelScope() {
-        return travelScope;
-    }
-
-    public Country getCountry() {
-        return country;
-    }
-
-    public DomesticRegion getDomesticRegion() {
-        return domesticRegion;
-    }
-
-    public String getCityName() {
-        return cityName;
-    }
-
-    public LocalDate getStartDate() {
-        return startDate;
-    }
-
-    public LocalDate getEndDate() {
-        return endDate;
-    }
-
-    public TripStatus getStatus() {
-        return status;
-    }
-
-    public String getTravelType() {
-        return travelType;
-    }
-
-    public String getCompanion() {
-        return companion;
-    }
-
-    public String getSummary() {
-        return summary;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public LocalDateTime getUpdatedAt() {
-        return updatedAt;
     }
 }
