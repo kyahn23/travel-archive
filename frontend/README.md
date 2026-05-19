@@ -70,6 +70,7 @@ src/
 ├── lib/               # 유틸리티
 │   ├── api/client.ts  # API 클라이언트
 │   ├── auth/          # 인증 관련 (context, hooks)
+│   ├── geo/           # 지도 GeoJSON 데이터 (직접 임포트용)
 │   ├── home/          # 홈 데모 데이터
 │   └── utils.ts       # 공통 유틸
 ├── types/
@@ -97,6 +98,30 @@ const LeafletMap = dynamic(() => import("@/components/maps/LeafletMap"), {
   ssr: false,
 });
 ```
+
+### `@vnedyalk0v/react19-simple-maps` GeoJSON 로딩
+
+`@vnedyalk0v/react19-simple-maps`는 납치 내 보안 정책으로 인해 `localhost` 환경에서 상대경로 GeoJSON URL(`/geo/...`)을 fetch할 수 없습니다. 이를 해결하기 위해 컴포넌트에서 GeoJSON 파일을 직접 import하여 객체로 전달합니다.
+
+```tsx
+import koreaGeo from "@/lib/geo/korea-sido.json";
+
+<Geographies geography={koreaGeo}>
+  {({ geographies }) =>
+    geographies.map((geo) => (
+      <Geography key={geo.rsmKey} geography={geo} />
+    ))
+  }
+</Geographies>
+```
+
+> **참고**: Next.js App Router에서는 `public/` 파일을 직접 import할 수 없으므로, `public/geo/`에 있는 파일을 `src/lib/geo/`로 복사하여 사용합니다.
+
+### 지도 데이터 출처
+
+- **세계 지도**: `world-110m.json` — Natural Earth 1:110m Admin-0 데이터 (Topology)
+- **국내 지도**: `korea-sido.json` — KOSTAT 2018 행정구역 경계 데이터 (17개 시/도, Topology)
+  - 출처: [southkorea/southkorea-maps](https://github.com/southkorea/southkorea-maps)
 
 ### Lucide React `Map` 아이콘
 
