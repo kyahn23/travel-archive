@@ -163,8 +163,9 @@ travel-archive/
 │   │   ├── auth/          # 회원가입, 로그인, JWT, refresh token
 │   │   ├── bucket/        # 버킷리스트와 여행 전환
 │   │   ├── checklist/     # 체크리스트, 템플릿, 항목
-│   │   ├── common/        # ApiResponse, enum
-│   │   ├── config/        # SecurityConfig
+│   │   ├── common/        # ApiResponse, enum, BaseEntity
+│   │   │   └── entity/
+│   │   ├── config/        # SecurityConfig, JpaConfig
 │   │   ├── map/           # 세계/국내 지도 집계
 │   │   ├── stats/         # 통계 집계
 │   │   ├── storage/       # 로컬 파일 저장 추상화
@@ -830,7 +831,7 @@ travel_checklist_templates 1:N travel_checklist_template_items
 | `password_hash` | BCrypt hash |
 | `nickname` | 표시 이름 |
 | `role` | USER/ADMIN |
-| `created_at`, `updated_at` | 감사 필드 |
+| `created_at`, `updated_at` | 감사 필드 (BaseEntity 자동 관리) |
 
 #### 6.2.2 `trips`
 
@@ -849,6 +850,7 @@ travel_checklist_templates 1:N travel_checklist_template_items
 | `travel_type` | 여행 유형 |
 | `companion` | 동행자 |
 | `summary` | 메모/요약 |
+| `created_at`, `updated_at` | 감사 필드 (BaseEntity 자동 관리) |
 
 제약:
 
@@ -872,10 +874,12 @@ travel_checklist_templates 1:N travel_checklist_template_items
 | `reference_url` | 참고 링크 |
 | `memo` | 메모 |
 | `companion` | V5 추가 |
+| `created_at`, `updated_at` | 감사 필드 (BaseEntity 자동 관리) |
 
 #### 6.2.4 `trip_days`
 
 - `trip_id`, `day_no`, `travel_date`, `title`, `memo`
+- `created_at`, `updated_at` (BaseEntity 자동 관리)
 - 여행 생성 시 날짜 범위 기준으로 자동 생성한다.
 
 #### 6.2.5 `trip_timeline_items`
@@ -883,21 +887,30 @@ travel_checklist_templates 1:N travel_checklist_template_items
 - `item_time`, `title`, `memo`, `place_name`, `address`
 - `latitude`, `longitude`: 상세 Leaflet 지도 마커
 - `cost`, `category`, `sort_order`
+- `created_at`, `updated_at` (BaseEntity 자동 관리)
 - 좌표 범위 check 제약 포함
 
 #### 6.2.6 `trip_photos`
 
 - `owner_type`: `TRIP_COVER` 또는 `TIMELINE_ITEM`
 - `storage_key`, `file_url`, `original_file_name`, `content_type`, `file_size`
+- `created_at`, `updated_at` (BaseEntity 자동 관리)
 - 대표 사진은 `timeline_item_id` null, 타임라인 사진은 not null
 
 #### 6.2.7 `travel_checklists`, `travel_checklist_items`
 
 - 체크리스트는 여행에 종속.
-- 항목은 `TODO`/`DONE` 상태와 `category`, `content`, `sort_order`, `due_date`를 가진다.
+- `travel_checklists`: `trip_id`, `title`, `progress_rate`, `created_at`, `updated_at` (BaseEntity 자동 관리)
+- `travel_checklist_items`: `checklist_id`, `category`, `content`, `status`, `sort_order`, `due_date`, `created_at`, `updated_at` (BaseEntity 자동 관리)
 - 진행률은 완료 항목 수 / 전체 항목 수로 계산한다.
 
-#### 6.2.8 `countries`, `domestic_regions`
+#### 6.2.8 `refresh_tokens`
+
+- `user_id`, `token_hash`, `expires_at`, `revoked_at`
+- `created_at` (BaseEntity 자동 관리)
+- 로그인 시 생성, 만료/로그아웃 시 폐기
+
+#### 6.2.9 `countries`, `domestic_regions`
 
 - 지도와 폼의 참조 데이터.
 - `map_key`는 @vnedyalk0v/react19-simple-maps 지오메트리와 매핑.
@@ -1104,6 +1117,7 @@ COMPLETED > PLANNED > BUCKET > NONE
 | 모바일 하단 탭 | - | `components/layout/bottom-nav.tsx`, `app/(main)/layout.tsx` |
 | 웹 사이드바 | - | `components/layout/sidebar.tsx`, `app/(main)/layout.tsx` |
 | 디자인 토큰 | - | `styles/tokens.ts`, Tailwind classes |
+| 공통 엔티티 시간 관리 | `common/entity/BaseEntity.java`, `config/JpaConfig.java` | - |
 
 ### 8.2 화면 → API → 타입 매핑
 
@@ -1462,7 +1476,7 @@ PhotoOwnerType: TRIP_COVER, TIMELINE_ITEM
 /api/statistics/summary
 ```
 
-### 15.4 가장 중요한 코드 파일 31개
+### 15.4 가장 중요한 코드 파일 32개
 
 | 순번 | 파일 | 이유 |
 |---:|---|---|
@@ -1470,33 +1484,35 @@ PhotoOwnerType: TRIP_COVER, TIMELINE_ITEM
 | 2 | `backend/src/main/java/com/travelarchive/auth/AuthService.java` | 회원가입/로그인/refresh 로직 |
 | 3 | `backend/src/main/java/com/travelarchive/auth/JwtTokenProvider.java` | JWT 생성/검증 |
 | 4 | `backend/src/main/java/com/travelarchive/config/SecurityConfig.java` | 보안 설정 |
-| 5 | `backend/src/main/java/com/travelarchive/trip/TripController.java` | 여행 API |
+| 5 | `backend/src/main/java/com/travelarchive/common/entity/BaseEntity.java` | 공통 엔티티 (자동 시간 관리) |
+| 6 | `backend/src/main/java/com/travelarchive/config/JpaConfig.java` | JPA Auditing 설정 |
+| 7 | `backend/src/main/java/com/travelarchive/trip/TripController.java` | 여행 API |
 | 6 | `backend/src/main/java/com/travelarchive/trip/TripService.java` | 여행 생성/상태/날짜 로직 |
-| 7 | `backend/src/main/java/com/travelarchive/bucket/BucketPlaceService.java` | 버킷/전환 로직 |
-| 8 | `backend/src/main/java/com/travelarchive/checklist/ChecklistService.java` | 체크리스트 생성/진행률 |
-| 9 | `backend/src/main/java/com/travelarchive/trip/TimelineService.java` | 타임라인 로직 |
-| 10 | `backend/src/main/java/com/travelarchive/map/MapService.java` | 지도 집계 |
-| 11 | `backend/src/main/java/com/travelarchive/stats/StatsService.java` | 통계 집계 |
-| 12 | `backend/src/main/java/com/travelarchive/storage/LocalFileStorageService.java` | 로컬 파일 저장 |
-| 13 | `backend/src/main/resources/db/migration/V1__init_schema.sql` | DB 기준 스키마 |
-| 14 | `backend/src/main/resources/db/migration/V4__demo_seed.sql` | 데모 데이터 |
-| 15 | `frontend/src/lib/api/client.ts` | API client |
-| 16 | `frontend/src/lib/auth/context.tsx` | 인증 상태 |
-| 17 | `frontend/src/lib/auth/hooks.ts` | 인증 guard |
-| 18 | `frontend/src/types/travel.ts` | 프론트 API 타입 |
-| 19 | `frontend/src/app/page.tsx` | 공개 홈 (비로그인 미리보기) |
-| 20 | `frontend/src/app/(main)/dashboard/page.tsx` | 홈 지도 대시보드 (로그인 후) |
-| 21 | `frontend/src/app/(main)/trips/page.tsx` | 여행 목록/생성 |
-| 22 | `frontend/src/app/(main)/trips/[tripId]/page.tsx` | 여행 상세 |
-| 23 | `frontend/src/app/(main)/bucket/page.tsx` | 버킷리스트 |
-| 24 | `frontend/src/app/(main)/stats/page.tsx` | 통계 |
-| 25 | `frontend/src/app/(main)/profile/page.tsx` | 마이페이지 |
-| 26 | `frontend/src/components/maps/WorldMap.tsx` | 세계지도 |
-| 27 | `frontend/src/components/maps/KoreaMap.tsx` | 국내지도 |
-| 28 | `frontend/src/components/maps/LeafletMap.tsx` | 상세 지도 |
-| 29 | `frontend/src/components/checklist/ChecklistView.tsx` | 체크리스트 UI |
-| 30 | `frontend/src/components/timeline/TimelineView.tsx` | 타임라인 UI |
-| 31 | `frontend/src/styles/tokens.ts` | 디자인 토큰 |
+| 8 | `backend/src/main/java/com/travelarchive/bucket/BucketPlaceService.java` | 버킷/전환 로직 |
+| 9 | `backend/src/main/java/com/travelarchive/checklist/ChecklistService.java` | 체크리스트 생성/진행률 |
+| 10 | `backend/src/main/java/com/travelarchive/trip/TimelineService.java` | 타임라인 로직 |
+| 11 | `backend/src/main/java/com/travelarchive/map/MapService.java` | 지도 집계 |
+| 12 | `backend/src/main/java/com/travelarchive/stats/StatsService.java` | 통계 집계 |
+| 13 | `backend/src/main/java/com/travelarchive/storage/LocalFileStorageService.java` | 로컬 파일 저장 |
+| 14 | `backend/src/main/resources/db/migration/V1__init_schema.sql` | DB 기준 스키마 |
+| 15 | `backend/src/main/resources/db/migration/V4__demo_seed.sql` | 데모 데이터 |
+| 16 | `frontend/src/lib/api/client.ts` | API client |
+| 17 | `frontend/src/lib/auth/context.tsx` | 인증 상태 |
+| 18 | `frontend/src/lib/auth/hooks.ts` | 인증 guard |
+| 19 | `frontend/src/types/travel.ts` | 프론트 API 타입 |
+| 20 | `frontend/src/app/page.tsx` | 공개 홈 (비로그인 미리보기) |
+| 21 | `frontend/src/app/(main)/dashboard/page.tsx` | 홈 지도 대시보드 (로그인 후) |
+| 22 | `frontend/src/app/(main)/trips/page.tsx` | 여행 목록/생성 |
+| 23 | `frontend/src/app/(main)/trips/[tripId]/page.tsx` | 여행 상세 |
+| 24 | `frontend/src/app/(main)/bucket/page.tsx` | 버킷리스트 |
+| 25 | `frontend/src/app/(main)/stats/page.tsx` | 통계 |
+| 26 | `frontend/src/app/(main)/profile/page.tsx` | 마이페이지 |
+| 27 | `frontend/src/components/maps/WorldMap.tsx` | 세계지도 |
+| 28 | `frontend/src/components/maps/KoreaMap.tsx` | 국내지도 |
+| 29 | `frontend/src/components/maps/LeafletMap.tsx` | 상세 지도 |
+| 30 | `frontend/src/components/checklist/ChecklistView.tsx` | 체크리스트 UI |
+| 31 | `frontend/src/components/timeline/TimelineView.tsx` | 타임라인 UI |
+| 32 | `frontend/src/styles/tokens.ts` | 디자인 토큰 |
 
 ---
 

@@ -11,6 +11,13 @@ Spring Boot 4.0.6 기반 REST API 서버입니다.
 | Gradle | 9.5+ | `./gradlew` wrapper로 대체 가능 |
 | Docker | 최신 | PostgreSQL 컨테이너 실행용 |
 
+## 의존성
+
+- Spring Boot Web, Security, Data JPA, Validation
+- PostgreSQL Driver
+- **Lombok** — 보일러플레이트 제거 (`@Getter`, `@NoArgsConstructor` 등)
+- Flyway (DB 마이그레이션)
+
 > **참고**: PostgreSQL을 직접 설치하지 않아도 됩니다. 프로젝트 루트의 `docker-compose.yml`로 Docker PostgreSQL을 실행할 수 있습니다.
 
 ## 환경 설정

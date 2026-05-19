@@ -680,6 +680,7 @@ MVP 제외 또는 후순위:
 - `bucket_places`
 - `travel_checklists`
 - `travel_checklist_items`
+- `refresh_tokens`
 - `countries`
 - `domestic_regions`
 - `cities`

@@ -10,7 +10,7 @@ Travel Archive는 사용자가 방문한 여행지를 기록하고, 버킷리스
 
 | 영역 | 기술 |
 |------|------|
-| Backend | Spring Boot 4.0.6, Java 25, Gradle 9.5, JPA, Flyway |
+| Backend | Spring Boot 4.0.6, Java 25, Gradle 9.5, JPA, Flyway, Lombok |
 | Frontend | Next.js 16.2.6, React 19.2.6, TypeScript, Tailwind CSS |
 | Database | PostgreSQL (기본), H2 (로컬 dev/테스트) |
 | 인증 | JWT (httpOnly cookie) |
