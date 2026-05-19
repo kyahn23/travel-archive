@@ -119,7 +119,10 @@ export default function LoginPage() {
           </Button>
         </form>
       </CardContent>
-      <CardFooter className="justify-center">
+      <CardFooter className="flex-col gap-3">
+        <Button asChild variant="outline" size="sm" className="w-full">
+          <Link href="/">홈화면</Link>
+        </Button>
         <p className="text-caption text-muted-foreground">
           계정이 없으신가요?{" "}
           <Link href="/signup" className="font-medium text-coral-500 hover:text-coral-600">

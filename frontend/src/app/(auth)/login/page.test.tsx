@@ -39,4 +39,20 @@ describe("LoginPage", () => {
     await waitFor(() => expect(mocks.login).toHaveBeenCalledWith("demo@example.com", "password"));
     expect(mocks.replace).toHaveBeenCalledWith("/dashboard");
   });
+
+  it("renders a home link to the public home page", () => {
+    render(<LoginPage />);
+
+    const homeLink = screen.getByRole("link", { name: "홈화면" });
+    expect(homeLink).toHaveAttribute("href", "/");
+  });
+
+  it("keeps the home link available when validation fails", () => {
+    render(<LoginPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: "로그인" }));
+
+    expect(screen.getByRole("alert")).toHaveTextContent("이메일을 입력해주세요.");
+    expect(screen.getByRole("link", { name: "홈화면" })).toHaveAttribute("href", "/");
+  });
 });
