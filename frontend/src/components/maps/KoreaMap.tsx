@@ -8,9 +8,7 @@ import {
 } from "@vnedyalk0v/react19-simple-maps";
 import { MapDetailSheet, type MapDetailData } from "./MapDetailSheet";
 import { cn } from "@/lib/utils";
-
-// 대한민국 시도 GeoJSON 파일 경로입니다.
-const GEO_URL = "/geo/korea-sido.json";
+import koreaGeo from "@/lib/geo/korea-sido.json";
 
 // 상태를 문자열 리터럴 유니온으로 제한합니다.
 type MapStatus = "COMPLETED" | "PLANNED" | "BUCKET" | "NONE";
@@ -127,13 +125,13 @@ export function KoreaMap({ data, className, onTripClick }: KoreaMapProps) {
         projectionConfig={{
           // @ts-expect-error react19-simple-maps 타입 이슈
           center: [127.5, 36.0],
-          scale: 4500,
+          scale: 3800,
         }}
-        width={500}
+        width={600}
         height={600}
         style={{ width: "100%", height: "auto" }}
       >
-        <Geographies geography={GEO_URL}>
+        <Geographies geography={koreaGeo}>
           {({ geographies }) =>
             geographies.map((geo, index) => {
               const code = geo.properties?.code ?? "";

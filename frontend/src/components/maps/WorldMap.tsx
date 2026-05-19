@@ -10,9 +10,7 @@ import {
 } from "@vnedyalk0v/react19-simple-maps";
 import { MapDetailSheet, type MapDetailData } from "./MapDetailSheet";
 import { cn } from "@/lib/utils";
-
-// 지도 GeoJSON 파일 경로를 상수로 분리합니다.
-const GEO_URL = "/geo/world-110m.json";
+import worldGeo from "@/lib/geo/world-110m.json";
 
 // 문자열 리터럴만 허용하는 타입 별칭입니다.
 // plain JavaScript에는 없고, TypeScript에서 "status 값은 이 4개 중 하나만 가능"이라고 제한할 때 씁니다.
@@ -140,7 +138,7 @@ export function WorldMap({ data, className, onTripClick }: WorldMapProps) {
       >
         <Sphere stroke="#DDD9C4" strokeWidth={0.5} fill="#FAFAF5" id="sphere" />
         <Graticule stroke="#DDD9C4" strokeWidth={0.3} />
-        <Geographies geography={GEO_URL}>
+        <Geographies geography={worldGeo}>
           {({ geographies }) =>
             geographies.map((geo, index) => {
               const geoId = geo.properties?.ISO_A3 ?? geo.properties?.ISO_A2 ?? geo.id ?? "";
