@@ -53,7 +53,11 @@ class TripControllerTest {
 
     @BeforeEach
     void cleanDatabase() {
-        tripDayRepository.deleteAll();
+        jdbcTemplate.update("delete from trip_timeline_items");
+        jdbcTemplate.update("delete from trip_photos");
+        jdbcTemplate.update("delete from trip_days");
+        jdbcTemplate.update("delete from travel_checklist_items");
+        jdbcTemplate.update("delete from travel_checklists");
         tripRepository.deleteAll();
         refreshTokenRepository.deleteAll();
         userRepository.deleteAll();
@@ -62,7 +66,7 @@ class TripControllerTest {
     @Test
     void createsListsGetsUpdatesAndDeletesOwnedTripsWithGeneratedDays() throws Exception {
         Cookie traveler = signup("traveler@example.com");
-        Long domesticRegionId = domesticRegionId("KR-11");
+        String domesticRegionId = domesticRegionId("KR-11");
 
         Long tripId = idFrom(createDomesticTrip(traveler, "서울 여행", domesticRegionId, "2026-05-01", "2026-05-03")
                 .andExpect(status().isCreated())
@@ -107,7 +111,7 @@ class TripControllerTest {
     void enforcesOwnershipAndValidStatusTransitions() throws Exception {
         Cookie owner = signup("owner@example.com");
         Cookie other = signup("other@example.com");
-        Long countryId = countryId("JP");
+        String countryId = countryId("JP");
 
         Long tripId = idFrom(createInternationalTrip(owner, countryId)
                 .andExpect(status().isCreated())
@@ -154,7 +158,7 @@ class TripControllerTest {
     @Test
     void rejectsInvalidDatesAndScopeReferences() throws Exception {
         Cookie traveler = signup("invalid@example.com");
-        Long domesticRegionId = domesticRegionId("KR-11");
+        String domesticRegionId = domesticRegionId("KR-11");
 
         createDomesticTrip(traveler, "역전 여행", domesticRegionId, "2026-05-03", "2026-05-01")
                 .andExpect(status().isBadRequest());
@@ -171,7 +175,7 @@ class TripControllerTest {
                         .cookie(traveler)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"title":"도시 누락","travel_scope":"DOMESTIC","domestic_region_id":%d,"start_date":"2026-05-01","end_date":"2026-05-02"}
+                                {"title":"도시 누락","travel_scope":"DOMESTIC","domestic_region_id":"%s","start_date":"2026-05-01","end_date":"2026-05-02"}
                                 """.formatted(domesticRegionId)))
                 .andExpect(status().isBadRequest());
     }
@@ -191,31 +195,31 @@ class TripControllerTest {
     }
 
     private org.springframework.test.web.servlet.ResultActions createDomesticTrip(Cookie traveler, String title,
-                                                                                 Long domesticRegionId,
+                                                                                 String domesticRegionId,
                                                                                  String startDate,
                                                                                  String endDate) throws Exception {
         return mockMvc.perform(post("/api/trips")
                 .cookie(traveler)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                        {"title":"%s","travel_scope":"DOMESTIC","domestic_region_id":%d,"city_name":"서울","start_date":"%s","end_date":"%s","travel_type":"휴식","companion":"친구","summary":"요약"}
+                        {"title":"%s","travel_scope":"DOMESTIC","domestic_region_id":"%s","city_name":"서울","start_date":"%s","end_date":"%s","travel_type":"휴식","companion":"친구","summary":"요약"}
                         """.formatted(title, domesticRegionId, startDate, endDate)));
     }
 
-    private org.springframework.test.web.servlet.ResultActions createInternationalTrip(Cookie traveler, Long countryId) throws Exception {
+    private org.springframework.test.web.servlet.ResultActions createInternationalTrip(Cookie traveler, String countryId) throws Exception {
         return mockMvc.perform(post("/api/trips")
                 .cookie(traveler)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                        {"title":"일본 여행","travel_scope":"INTERNATIONAL","country_id":%d,"city_name":"도쿄","start_date":"2026-06-01","end_date":"2026-06-01"}
+                        {"title":"일본 여행","travel_scope":"INTERNATIONAL","country_id":"%s","city_name":"도쿄","start_date":"2026-06-01","end_date":"2026-06-01"}
                         """.formatted(countryId)));
     }
 
-    private Long domesticRegionId(String code) {
-        return jdbcTemplate.queryForObject("select id from domestic_regions where code = ?", Long.class, code);
+    private String domesticRegionId(String code) {
+        return jdbcTemplate.queryForObject("select code from domestic_regions where code = ?", String.class, code);
     }
 
-    private Long countryId(String codeAlpha2) {
-        return jdbcTemplate.queryForObject("select id from countries where code_alpha2 = ?", Long.class, codeAlpha2);
+    private String countryId(String codeAlpha2) {
+        return jdbcTemplate.queryForObject("select code_alpha2 from countries where code_alpha2 = ?", String.class, codeAlpha2);
     }
 }
