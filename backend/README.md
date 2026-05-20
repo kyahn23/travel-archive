@@ -16,7 +16,7 @@ Spring Boot 4.0.6 기반 REST API 서버입니다.
 - Spring Boot Web, Security, Data JPA, Validation
 - PostgreSQL Driver
 - **Lombok** — 보일러플레이트 제거 (`@Getter`, `@NoArgsConstructor` 등)
-- Flyway (DB 마이그레이션)
+
 
 > **참고**: PostgreSQL을 직접 설치하지 않아도 됩니다. 프로젝트 루트의 `docker-compose.yml`로 Docker PostgreSQL을 실행할 수 있습니다.
 
@@ -145,7 +145,7 @@ Docker PostgreSQL을 사용하는 dev profile로 실행합니다. JPA가 스키�
 ./gradlew bootRun --args='--spring.profiles.active=dev'
 ```
 
-dev profile은 `ddl-auto: create`로 설정되어 있어 앱 실행 시 JPA가 엔티티 기반으로 스키마를 자동 생성합니다.
+dev profile은 `ddl-auto: update`로 설정되어 있어 앱 실행 시 JPA가 엔티티 기반으로 스키마를 자동 생성/갱신합니다. 참조 데이터(국가, 지역, 체크리스트 템플릿)는 `SeedDataLoader`가 앱 기동 시 자동으로 삽입됩니다.
 
 ```bash
 ./gradlew bootRun
@@ -231,7 +231,7 @@ JPA/Hibernate가 엔티티 기반으로 스키마를 자동 생성합니다.
 | 프로필 | `ddl-auto` | 설명 |
 |---|---|---|
 | 기본 (운영) | `validate` | 엔티티와 DB 스키마 일치 여부만 검증 |
-| dev (로컬) | `create` | 앱 실행 시 스키마를 자동 생성/재생성 |
+| dev (로컬) | `update` | 앱 실행 시 스키마를 자동 생성/갱신 |
 
 로컬 개발 시 `docker compose up -d`로 PostgreSQL을 먼저 실행한 후 `./gradlew bootRun --args='--spring.profiles.active=dev'`로 실행하세요.
 

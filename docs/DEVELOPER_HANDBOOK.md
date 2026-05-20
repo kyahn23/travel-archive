@@ -125,8 +125,9 @@ Backend: Spring Boot 4.0.6
   - REST Controller -> Service -> Repository -> JPA Entity
   |
   v
-Database: PostgreSQL 16 / H2 dev
-  - Flyway migration
+Database: PostgreSQL 16
+  - JPA `ddl-auto`로 스키마 관리 (`dev`: `update`, `prod`: `validate`)
+  - `SeedDataLoader`로 참조 데이터 자동 삽입
   - users, trips, bucket_places, checklist, timeline, photos, map reference
   |
   v
@@ -138,10 +139,10 @@ Local Storage
 
 | 기술 | 이유 |
 |---|---|
-| Spring Boot 4.0.6 | REST API, 보안, JPA, Flyway 기반 풀스택 포트폴리오에 적합 |
+| Spring Boot 4.0.6 | REST API, 보안, JPA 기반 풀스택 포트폴리오에 적합 |
 | Java 25 | Spring Boot 4.x 런타임, Virtual Threads, 최신 문법 활용 가능 |
 | JPA | 사용자·여행·타임라인·체크리스트 관계 모델을 객체로 표현 |
-| Flyway | DB 스키마와 seed 데이터를 코드로 버전 관리 |
+| JPA ddl-auto | 개발 환경에서 스키마 자동 관리 (운영: validate) |
 | PostgreSQL | 관계형 데이터와 집계 쿼리에 안정적 |
 | H2 | 빠른 로컬 dev/test profile |
 | JWT httpOnly Cookie | SPA/PWA에서 토큰 탈취 위험을 줄이고 자동 인증 전달 |
@@ -171,12 +172,8 @@ travel-archive/
 │   │   ├── storage/       # 로컬 파일 저장 추상화
 │   │   ├── trip/          # 여행, 날짜, 타임라인, 사진
 │   │   └── user/          # 사용자 엔티티/저장소
-│   └── src/main/resources/db/migration/
-│       ├── V1__init_schema.sql
-│       ├── V2__seed_reference_data.sql
-│       ├── V3__seed_checklist_templates.sql
-│       ├── V4__demo_seed.sql
-│       └── V5__add_bucket_companion.sql
+│   └── src/main/java/com/travelarchive/common/config/
+│       └── SeedDataLoader.java  # 앱 기동 시 참조 데이터 자동 삽입
 ├── frontend/
 │   ├── src/app/(auth)/    # 로그인/회원가입
 │   ├── src/app/(main)/    # 홈, 여행, 버킷, 통계, 프로필
@@ -916,22 +913,18 @@ travel_checklist_templates 1:N travel_checklist_template_items
 - `map_key`는 @vnedyalk0v/react19-simple-maps 지오메트리와 매핑.
 - 국내 MVP는 `SIDO` 단위만 사용.
 
-### 6.3 Flyway 마이그레이션 전략
+### 6.3 데이터베이스 스키마 관리
 
-| 파일 | 내용 |
-|---|---|
-| `V1__init_schema.sql` | 전체 기본 스키마, 제약, 인덱스 |
-| `V2__seed_reference_data.sql` | 국가/국내 지역 seed |
-| `V3__seed_checklist_templates.sql` | 체크리스트 템플릿 seed |
-| `V4__demo_seed.sql` | 데모 계정과 샘플 여행/버킷/타임라인/사진 |
-| `V5__add_bucket_companion.sql` | 버킷 companion 확장 |
+현재 프로젝트는 JPA `ddl-auto`를 사용하여 스키마를 관리합니다.
 
-규칙:
+| 프로필 | `ddl-auto` | 설명 |
+|---|---|---|
+| dev (로컬) | `update` | 엔티티 변경 시 스키마 자동 갱신 |
+| 기본 (운영) | `validate` | 엔티티와 DB 스키마 일치 여부만 검증 |
 
-1. 이미 배포된 migration은 수정하지 않는다.
-2. 스키마 변경은 항상 새 `V{n}__description.sql`로 추가한다.
-3. seed 데이터 변경도 버전 관리한다.
-4. 개발 DB 초기화가 필요하면 `docker compose down -v` 후 재실행.
+참조 데이터(국가, 국내 지역, 체크리스트 템플릿)는 `SeedDataLoader`(`CommandLineRunner`)가 애플리케이션 기동 시 자동으로 삽입됩니다. 테이블이 비어있을 때만 실행되므로 중복 삽입되지 않습니다.
+
+> **참고**: 현재 Flyway 마이그레이션은 도입되어 있지 않습니다. 향후 스키마 변경 이력을 버전 관리하고 싶다면 Flyway 도입을 검토하세요.
 
 ### 6.4 샘플 데이터 구조
 
@@ -1103,7 +1096,7 @@ COMPLETED > PLANNED > BUCKET > NONE
 | 국내/해외 구분 | `TravelScope.java`, `Trip.java`, DB check constraints | `types/travel.ts`, 여행/버킷 폼 |
 | 버킷 CRUD | `bucket/BucketPlaceController.java`, `BucketPlaceService.java`, `BucketPlace.java` | `app/(main)/bucket/page.tsx`, `BucketCard.tsx`, `BucketForm.tsx` |
 | 버킷 → 여행 전환 | `BucketPlaceController.convertToTrip`, `BucketPlaceService.convertToTrip` | `ConvertTripForm.tsx`, `bucket/page.tsx` |
-| 체크리스트 자동 생성 | `ChecklistService.java`, `TravelChecklistTemplate.java`, `V3__seed_checklist_templates.sql` | `ChecklistView.tsx` |
+| 체크리스트 자동 생성 | `ChecklistService.java`, `TravelChecklistTemplate.java`, `SeedDataLoader` | `ChecklistView.tsx` |
 | 체크리스트 항목 토글 | `ChecklistController.toggleItem`, `TravelChecklistItem.java` | `ChecklistItem.tsx`, `ChecklistView.tsx` |
 | 타임라인 CRUD | `TimelineController.java`, `TimelineService.java`, `TripTimelineItem.java` | `TimelineView.tsx`, `TimelineForm.tsx`, `TimelineItem.tsx` |
 | 여행 날짜 | `TripDay.java`, `TripDayRepository.java`, `TripService` | `TimelineView.tsx`, 상세 페이지 |
@@ -1159,7 +1152,7 @@ COMPLETED > PLANNED > BUCKET > NONE
 4. 상태값은 enum을 사용하고 문자열 하드코딩을 피한다.
 5. 상태 전환/완료 조건/지도 집계 제외 규칙은 서버에서 검증한다.
 6. 파일 저장은 `StorageService` 인터페이스 뒤에 둔다.
-7. DB 변경은 Flyway migration으로만 수행한다.
+7. DB 스키마 변경은 JPA 엔티티를 통해 관리하며, `ddl-auto: validate`로 엔티티-DB 일치 여부를 검증한다.
 
 ### 9.2 프론트엔드 코딩 컨벤션
 
@@ -1198,7 +1191,7 @@ main
 | 영역 | 테스트 |
 |---|---|
 | Backend unit | Service 상태 전환, 체크리스트 생성, 지도/통계 집계 |
-| Backend integration | Auth cookie, CRUD, 사용자 소유권, Flyway migration |
+| Backend integration | Auth cookie, CRUD, 사용자 소유권, SeedDataLoader |
 | Frontend unit | 타입/컴포넌트 렌더링, API client, 지도 marker 변환 |
 | Frontend build | `npm run build` |
 | E2E 후보 | 로그인 → 버킷 생성 → 전환 → 체크리스트 → 완료 → 지도/통계 |
@@ -1237,7 +1230,7 @@ main
 | `Bind 0.0.0.0:5432 failed` | 로컬 PostgreSQL 포트 충돌 | `.env`에 `POSTGRES_PORT=5433` |
 | DB connection refused | 컨테이너 준비 전 실행 | `docker compose ps`로 healthy 확인 |
 | `JWT secret is not configured` | `JWT_SECRET` 없음 | 32자 이상 secret export |
-| Flyway migration failed | 기존 볼륨 스키마 불일치 | 개발 환경이면 `docker compose down -v` |
+| JPA schema validation failed | 엔티티와 DB 스키마 불일치 | `docker compose down -v` 후 재실행 또는 엔티티-DB 동기화 확인 |
 | 프론트 401 루프 | 쿠키 없음/만료 | `/login`, 백엔드 쿠키 path/secure 확인 |
 | Leaflet SSR 오류 | 서버 렌더링에서 window 접근 | dynamic import `ssr:false` |
 | Lucide `Map` 충돌 | JS `Map` 전역 가림 | `import { Map as MapIcon }` |
@@ -1258,7 +1251,7 @@ cd backend
 - Security filter에서 인증 principal이 설정되는지
 - Service에서 사용자 email로 User를 찾는지
 - JPA lazy loading/transaction 오류
-- Flyway migration 순서
+- JPA 엔티티-스키마 동기화 상태
 
 프론트엔드:
 
@@ -1494,8 +1487,8 @@ PhotoOwnerType: TRIP_COVER, TIMELINE_ITEM
 | 11 | `backend/src/main/java/com/travelarchive/map/MapService.java` | 지도 집계 |
 | 12 | `backend/src/main/java/com/travelarchive/stats/StatsService.java` | 통계 집계 |
 | 13 | `backend/src/main/java/com/travelarchive/storage/LocalFileStorageService.java` | 로컬 파일 저장 |
-| 14 | `backend/src/main/resources/db/migration/V1__init_schema.sql` | DB 기준 스키마 |
-| 15 | `backend/src/main/resources/db/migration/V4__demo_seed.sql` | 데모 데이터 |
+| 14 | `backend/src/main/java/com/travelarchive/common/config/SeedDataLoader.java` | 참조 데이터 자동 삽입 |
+| 15 | `backend/src/main/resources/application.yml` | DB 및 JPA 설정 |
 | 16 | `frontend/src/lib/api/client.ts` | API client |
 | 17 | `frontend/src/lib/auth/context.tsx` | 인증 상태 |
 | 18 | `frontend/src/lib/auth/hooks.ts` | 인증 guard |

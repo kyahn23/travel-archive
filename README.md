@@ -10,9 +10,9 @@ Travel Archive는 사용자가 방문한 여행지를 기록하고, 버킷리스
 
 | 영역 | 기술 |
 |------|------|
-| Backend | Spring Boot 4.0.6, Java 25, Gradle 9.5, JPA, Flyway, Lombok |
+| Backend | Spring Boot 4.0.6, Java 25, Gradle 9.5, JPA, Lombok |
 | Frontend | Next.js 16.2.6, React 19.2.6, TypeScript, Tailwind CSS |
-| Database | PostgreSQL (기본), H2 (로컬 dev/테스트) |
+| Database | PostgreSQL 16 |
 | 인증 | JWT (httpOnly cookie) |
 | 지도 | Leaflet, @vnedyalk0v/react19-simple-maps, Recharts |
 
@@ -22,7 +22,7 @@ Travel Archive는 사용자가 방문한 여행지를 기록하고, 버킷리스
 travel-archive/
 ├── backend/          # Spring Boot API 서버
 │   ├── src/main/java/com/travelarchive/...
-│   └── src/main/resources/db/migration/   # Flyway 마이그레이션
+│   └── src/main/java/com/travelarchive/common/config/  # SeedDataLoader
 ├── frontend/         # Next.js 프론트엔드
 │   ├── src/app/       # App Router 페이지
 │   ├── src/components/ # UI 컴포넌트
@@ -83,7 +83,7 @@ docker compose logs -f postgres
 # 컨테이너 중지 (데이터는 유지)
 docker compose down
 
-# 컨테이너 중지 + 데이터 초기화 (Flyway 마이그레이션부터 다시)
+# 컨테이너 중지 + 데이터 초기화 (PostgreSQL 볼륨 초기화)
 docker compose down -v
 
 # PostgreSQL 재시작
@@ -120,7 +120,7 @@ cd backend
 
 기본적으로 `http://localhost:8080`에서 실행됩니다.
 
-PostgreSQL 없이 빠르게 테스트하려면 H2 메모리 DB를 사용하는 `dev` profile을 사용합니다:
+빠른 로컬 개발을 위해 `dev` profile을 사용할 수 있습니다. 동일한 PostgreSQL을 사용하며 JPA `ddl-auto: update`로 스키마를 자동 관리합니다:
 
 ```bash
 ./gradlew bootRun --args='--spring.profiles.active=dev'

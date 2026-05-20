@@ -937,7 +937,7 @@ MVP에서는 `SIDO` 단위만 지도 표시 대상으로 사용한다.
 
 ### 10.2 Backend
 
-- Spring Boot 3.x
+- Spring Boot 4.x
 - Spring Security
 - JWT
 - JPA
