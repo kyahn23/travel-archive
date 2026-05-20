@@ -49,8 +49,8 @@ public class MapService {
                               and travel_scope = 'INTERNATIONAL'
                               and status <> 'ON_HOLD'
                         ) region_status
-                        join countries c on c.id = region_status.region_id
-                        group by c.id, c.map_key, c.code_alpha2, c.name_ko, c.display_order
+                        join countries c on c.code_alpha2 = region_status.region_id
+                        group by c.code_alpha2, c.map_key, c.name_ko, c.display_order
                         order by c.display_order, c.name_ko
                         """)
                 .setParameter("userId", userId)
@@ -85,8 +85,8 @@ public class MapService {
                               and travel_scope = 'DOMESTIC'
                               and status <> 'ON_HOLD'
                         ) region_status
-                        join domestic_regions r on r.id = region_status.region_id
-                        group by r.id, r.map_key, r.code, r.name_ko, r.display_order
+                        join domestic_regions r on r.code = region_status.region_id
+                        group by r.code, r.map_key, r.name_ko, r.display_order
                         order by r.display_order, r.name_ko
                         """)
                 .setParameter("userId", userId)
@@ -118,7 +118,7 @@ public class MapService {
     @SuppressWarnings("unchecked")
     private RegionMetadata findRegion(String mapKey) {
         List<Object[]> countries = entityManager.createNativeQuery("""
-                        select id, map_key, name_ko
+                        select code_alpha2, map_key, name_ko
                         from countries
                         where map_key = :mapKey
                         """)
@@ -126,11 +126,11 @@ public class MapService {
                 .getResultList();
         if (!countries.isEmpty()) {
             Object[] row = countries.get(0);
-            return new RegionMetadata(((Number) row[0]).longValue(), (String) row[1], (String) row[2], TravelScope.INTERNATIONAL);
+            return new RegionMetadata((String) row[0], (String) row[1], (String) row[2], TravelScope.INTERNATIONAL);
         }
 
         List<Object[]> domesticRegions = entityManager.createNativeQuery("""
-                        select id, map_key, name_ko
+                        select code, map_key, name_ko
                         from domestic_regions
                         where map_key = :mapKey
                         """)
@@ -138,7 +138,7 @@ public class MapService {
                 .getResultList();
         if (!domesticRegions.isEmpty()) {
             Object[] row = domesticRegions.get(0);
-            return new RegionMetadata(((Number) row[0]).longValue(), (String) row[1], (String) row[2], TravelScope.DOMESTIC);
+            return new RegionMetadata((String) row[0], (String) row[1], (String) row[2], TravelScope.DOMESTIC);
         }
 
         throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Map region not found");
@@ -156,7 +156,7 @@ public class MapService {
                         """.formatted(regionColumn))
                 .setParameter("userId", userId)
                 .setParameter("scope", region.scope().name())
-                .setParameter("regionId", region.id())
+                .setParameter("regionId", region.code())
                 .setParameter("status", status.name())
                 .getSingleResult()).longValue();
     }
@@ -173,7 +173,7 @@ public class MapService {
                         """.formatted(regionColumn))
                 .setParameter("userId", userId)
                 .setParameter("scope", region.scope().name())
-                .setParameter("regionId", region.id())
+                .setParameter("regionId", region.code())
                 .getSingleResult()).longValue();
     }
 
@@ -191,7 +191,7 @@ public class MapService {
                         """.formatted(regionColumn))
                 .setParameter("userId", userId)
                 .setParameter("scope", region.scope().name())
-                .setParameter("regionId", region.id())
+                .setParameter("regionId", region.code())
                 .getResultList();
         return rows.stream()
                 .map(row -> new MapRegionResponse.TripSummary(
@@ -213,6 +213,6 @@ public class MapService {
         return ((Date) value).toLocalDate();
     }
 
-    private record RegionMetadata(Long id, String mapKey, String name, TravelScope scope) {
+    private record RegionMetadata(String code, String mapKey, String name, TravelScope scope) {
     }
 }

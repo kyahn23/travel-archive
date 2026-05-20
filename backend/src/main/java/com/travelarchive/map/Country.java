@@ -2,8 +2,6 @@ package com.travelarchive.map;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
@@ -11,10 +9,7 @@ import jakarta.persistence.Table;
 @Table(name = "countries")
 public class Country {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    @Column(name = "code_alpha2", nullable = false, unique = true, length = 2)
+    @Column(name = "code_alpha2", nullable = false, length = 2)
     private String codeAlpha2;
 
     @Column(name = "map_key", nullable = false, unique = true, length = 3)
@@ -32,10 +27,39 @@ public class Country {
     @Column(name = "display_order", nullable = false)
     private Integer displayOrder;
 
+    public Country(String codeAlpha2, String mapKey, String nameKo, String nameEn, String continent, Integer displayOrder) {
+        this.codeAlpha2 = codeAlpha2;
+        this.mapKey = mapKey;
+        this.nameKo = nameKo;
+        this.nameEn = nameEn;
+        this.continent = continent;
+        this.displayOrder = displayOrder;
+    }
+
     protected Country() {
     }
 
-    public Long getId() {
-        return id;
+    public String getCodeAlpha2() {
+        return codeAlpha2;
+    }
+
+    public String getMapKey() {
+        return mapKey;
+    }
+
+    public String getNameKo() {
+        return nameKo;
+    }
+
+    public String getNameEn() {
+        return nameEn;
+    }
+
+    public String getContinent() {
+        return continent;
+    }
+
+    public Integer getDisplayOrder() {
+        return displayOrder;
     }
 }

@@ -106,7 +106,7 @@ public class StatsService {
 
     private long countDistinctCompletedCountries(Long userId) {
         return entityManager.createQuery("""
-                        select count(distinct t.country.id)
+                        select count(distinct t.country.codeAlpha2)
                         from Trip t
                         where t.user.id = :userId and t.status = :status and t.travelScope = :scope
                         """, Long.class)
@@ -118,7 +118,7 @@ public class StatsService {
 
     private long countDistinctCompletedDomesticRegions(Long userId) {
         return entityManager.createQuery("""
-                        select count(distinct t.domesticRegion.id)
+                        select count(distinct t.domesticRegion.code)
                         from Trip t
                         where t.user.id = :userId and t.status = :status and t.travelScope = :scope
                         """, Long.class)
@@ -133,7 +133,7 @@ public class StatsService {
                         select t.country.nameKo, count(t)
                         from Trip t
                         where t.user.id = :userId and t.status = :status and t.travelScope = :scope
-                        group by t.country.id, t.country.nameKo
+                        group by t.country.codeAlpha2, t.country.nameKo
                         """, Object[].class)
                 .setParameter("userId", userId)
                 .setParameter("status", TripStatus.COMPLETED)
@@ -148,7 +148,7 @@ public class StatsService {
                         select t.domesticRegion.nameKo, count(t)
                         from Trip t
                         where t.user.id = :userId and t.status = :status and t.travelScope = :scope
-                        group by t.domesticRegion.id, t.domesticRegion.nameKo
+                        group by t.domesticRegion.code, t.domesticRegion.nameKo
                         """, Object[].class)
                 .setParameter("userId", userId)
                 .setParameter("status", TripStatus.COMPLETED)

@@ -91,7 +91,9 @@ public class TripService {
     @Transactional
     public void delete(String email, Long id) {
         User user = currentUser(email);
-        tripRepository.delete(findOwnedTrip(id, user.getId()));
+        Trip trip = findOwnedTrip(id, user.getId());
+        tripDayRepository.deleteByTripId(trip.getId());
+        tripRepository.delete(trip);
     }
 
     @Transactional
@@ -133,10 +135,10 @@ public class TripService {
 
     private TripFields mergeAndValidate(Trip trip, TripRequest request) {
         TravelScope scope = request.travelScope() == null ? trip.getTravelScope() : request.travelScope();
-        Long countryId = request.countryId() == null && scope == trip.getTravelScope() && trip.getCountry() != null
-                ? trip.getCountry().getId() : request.countryId();
-        Long domesticRegionId = request.domesticRegionId() == null && scope == trip.getTravelScope() && trip.getDomesticRegion() != null
-                ? trip.getDomesticRegion().getId() : request.domesticRegionId();
+        String countryId = request.countryId() == null && scope == trip.getTravelScope() && trip.getCountry() != null
+                ? trip.getCountry().getCodeAlpha2() : request.countryId();
+        String domesticRegionId = request.domesticRegionId() == null && scope == trip.getTravelScope() && trip.getDomesticRegion() != null
+                ? trip.getDomesticRegion().getCode() : request.domesticRegionId();
         return validateFields(
                 request.title() == null ? trip.getTitle() : request.title(),
                 scope,
@@ -151,7 +153,7 @@ public class TripService {
         );
     }
 
-    private TripFields validateFields(String title, TravelScope travelScope, Long countryId, Long domesticRegionId,
+    private TripFields validateFields(String title, TravelScope travelScope, String countryId, String domesticRegionId,
                                       String cityName, LocalDate startDate, LocalDate endDate, String travelType,
                                       String companion, String summary) {
         if (isBlank(title)) {

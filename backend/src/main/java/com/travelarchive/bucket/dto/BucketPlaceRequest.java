@@ -9,8 +9,8 @@ import java.time.LocalDate;
 public record BucketPlaceRequest(
         String title,
         @JsonAlias("travel_scope") TravelScope travelScope,
-        @JsonAlias("country_id") Long countryId,
-        @JsonAlias("domestic_region_id") Long domesticRegionId,
+        @JsonAlias("country_id") String countryId,
+        @JsonAlias("domestic_region_id") String domesticRegionId,
         @JsonAlias("city_name") String cityName,
         String reason,
         @JsonAlias("expected_budget") BigDecimal expectedBudget,

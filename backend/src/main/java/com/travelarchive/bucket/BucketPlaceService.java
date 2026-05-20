@@ -129,10 +129,10 @@ public class BucketPlaceService {
 
     private BucketFields mergeAndValidate(BucketPlace bucketPlace, BucketPlaceRequest request) {
         TravelScope scope = request.travelScope() == null ? bucketPlace.getTravelScope() : request.travelScope();
-        Long countryId = request.countryId() == null && scope == bucketPlace.getTravelScope() && bucketPlace.getCountry() != null
-                ? bucketPlace.getCountry().getId() : request.countryId();
-        Long domesticRegionId = request.domesticRegionId() == null && scope == bucketPlace.getTravelScope() && bucketPlace.getDomesticRegion() != null
-                ? bucketPlace.getDomesticRegion().getId() : request.domesticRegionId();
+        String countryId = request.countryId() == null && scope == bucketPlace.getTravelScope() && bucketPlace.getCountry() != null
+                ? bucketPlace.getCountry().getCodeAlpha2() : request.countryId();
+        String domesticRegionId = request.domesticRegionId() == null && scope == bucketPlace.getTravelScope() && bucketPlace.getDomesticRegion() != null
+                ? bucketPlace.getDomesticRegion().getCode() : request.domesticRegionId();
         return validateFields(
                 request.title() == null ? bucketPlace.getTitle() : request.title(),
                 scope,
@@ -150,7 +150,7 @@ public class BucketPlaceService {
         );
     }
 
-    private BucketFields validateFields(String title, TravelScope travelScope, Long countryId, Long domesticRegionId,
+    private BucketFields validateFields(String title, TravelScope travelScope, String countryId, String domesticRegionId,
                                         String cityName, String reason, BigDecimal expectedBudget, String desiredSeason,
                                         Integer priority, BucketStatus status, String companion, String referenceUrl, String memo) {
         if (isBlank(title)) {
