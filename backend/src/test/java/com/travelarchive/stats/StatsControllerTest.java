@@ -64,10 +64,10 @@ class StatsControllerTest {
     void returnsSummaryMonthlyAndTopRegionsForAuthenticatedUserOnly() throws Exception {
         Cookie traveler = signup("stats@example.com");
         Cookie other = signup("other-stats@example.com");
-        Long seoulId = domesticRegionId("KR-11");
-        Long busanId = domesticRegionId("KR-26");
-        Long japanId = countryId("JP");
-        Long usaId = countryId("US");
+        String seoulId = domesticRegionId("KR-11");
+        String busanId = domesticRegionId("KR-26");
+        String japanId = countryId("JP");
+        String usaId = countryId("US");
 
         complete(createDomesticTrip(traveler, "서울 봄", seoulId, "2026-05-01", "2026-05-03"), traveler);
         complete(createDomesticTrip(traveler, "서울 여름", seoulId, "2026-05-10", "2026-05-10"), traveler);
@@ -123,12 +123,12 @@ class StatsControllerTest {
         return result.getResponse().getCookie(AuthController.ACCESS_TOKEN_COOKIE);
     }
 
-    private Long createDomesticTrip(Cookie traveler, String title, Long domesticRegionId, String startDate, String endDate) throws Exception {
+    private Long createDomesticTrip(Cookie traveler, String title, String domesticRegionId, String startDate, String endDate) throws Exception {
         return idFrom(mockMvc.perform(post("/api/trips")
                         .cookie(traveler)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"title":"%s","travel_scope":"DOMESTIC","domestic_region_id":%d,"city_name":"서울","start_date":"%s","end_date":"%s"}
+                                {"title":"%s","travel_scope":"DOMESTIC","domestic_region_id":"%s","city_name":"서울","start_date":"%s","end_date":"%s"}
                                 """.formatted(title, domesticRegionId, startDate, endDate)))
                 .andExpect(status().isCreated())
                 .andReturn()
@@ -136,12 +136,12 @@ class StatsControllerTest {
                 .getContentAsString());
     }
 
-    private Long createInternationalTrip(Cookie traveler, String title, Long countryId, String startDate, String endDate) throws Exception {
+    private Long createInternationalTrip(Cookie traveler, String title, String countryId, String startDate, String endDate) throws Exception {
         return idFrom(mockMvc.perform(post("/api/trips")
                         .cookie(traveler)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"title":"%s","travel_scope":"INTERNATIONAL","country_id":%d,"city_name":"도시","start_date":"%s","end_date":"%s"}
+                                {"title":"%s","travel_scope":"INTERNATIONAL","country_id":"%s","city_name":"도시","start_date":"%s","end_date":"%s"}
                                 """.formatted(title, countryId, startDate, endDate)))
                 .andExpect(status().isCreated())
                 .andReturn()
@@ -169,11 +169,11 @@ class StatsControllerTest {
         return JsonPath.parse(body).read("$.data.id", Long.class);
     }
 
-    private Long domesticRegionId(String code) {
-        return jdbcTemplate.queryForObject("select id from domestic_regions where code = ?", Long.class, code);
+    private String domesticRegionId(String code) {
+        return jdbcTemplate.queryForObject("select code from domestic_regions where code = ?", String.class, code);
     }
 
-    private Long countryId(String codeAlpha2) {
-        return jdbcTemplate.queryForObject("select id from countries where code_alpha2 = ?", Long.class, codeAlpha2);
+    private String countryId(String codeAlpha2) {
+        return jdbcTemplate.queryForObject("select code_alpha2 from countries where code_alpha2 = ?", String.class, codeAlpha2);
     }
 }

@@ -164,12 +164,12 @@ class TimelineControllerTest {
     }
 
     private Long createTrip(Cookie traveler, String startDate, String endDate) throws Exception {
-        Long domesticRegionId = jdbcTemplate.queryForObject("select id from domestic_regions where code = ?", Long.class, "KR-11");
+        String domesticRegionId = jdbcTemplate.queryForObject("select code from domestic_regions where code = ?", String.class, "KR-11");
         return idFrom(mockMvc.perform(post("/api/trips")
                         .cookie(traveler)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"title":"서울 여행","travel_scope":"DOMESTIC","domestic_region_id":%d,"city_name":"서울","start_date":"%s","end_date":"%s"}
+                                {"title":"서울 여행","travel_scope":"DOMESTIC","domestic_region_id":"%s","city_name":"서울","start_date":"%s","end_date":"%s"}
                                 """.formatted(domesticRegionId, startDate, endDate)))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString());

@@ -166,12 +166,12 @@ class ChecklistControllerTest {
     }
 
     private Long createDomesticTrip(Cookie traveler) throws Exception {
-        Long domesticRegionId = jdbcTemplate.queryForObject("select id from domestic_regions where code = ?", Long.class, "KR-11");
+        String domesticRegionId = jdbcTemplate.queryForObject("select code from domestic_regions where code = ?", String.class, "KR-11");
         String body = mockMvc.perform(post("/api/trips")
                         .cookie(traveler)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"title":"서울 여행","travel_scope":"DOMESTIC","domestic_region_id":%d,"city_name":"서울","start_date":"2026-05-01","end_date":"2026-05-03"}
+                                {"title":"서울 여행","travel_scope":"DOMESTIC","domestic_region_id":"%s","city_name":"서울","start_date":"2026-05-01","end_date":"2026-05-03"}
                                 """.formatted(domesticRegionId)))
                 .andExpect(status().isCreated())
                 .andReturn()

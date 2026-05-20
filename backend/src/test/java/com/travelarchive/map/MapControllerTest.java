@@ -71,12 +71,12 @@ class MapControllerTest {
     void aggregatesWorldAndDomesticMapsWithStatusPriorityAndOwnership() throws Exception {
         Cookie traveler = signup("map-owner@example.com");
         Cookie other = signup("map-other@example.com");
-        Long japanId = countryId("JP");
-        Long usaId = countryId("US");
-        Long franceId = countryId("FR");
-        Long seoulId = domesticRegionId("KR-11");
-        Long busanId = domesticRegionId("KR-26");
-        Long jejuId = domesticRegionId("KR-49");
+        String japanId = countryId("JP");
+        String usaId = countryId("US");
+        String franceId = countryId("FR");
+        String seoulId = domesticRegionId("KR-11");
+        String busanId = domesticRegionId("KR-26");
+        String jejuId = domesticRegionId("KR-49");
 
         complete(createInternationalTrip(traveler, "일본 완료", japanId, "2026-05-01", "2026-05-03"), traveler);
         createInternationalTrip(traveler, "일본 계획", japanId, "2026-06-01", "2026-06-02");
@@ -119,7 +119,7 @@ class MapControllerTest {
     @Test
     void returnsRegionDetailCountsAndTripsForMapKey() throws Exception {
         Cookie traveler = signup("map-detail@example.com");
-        Long seoulId = domesticRegionId("KR-11");
+        String seoulId = domesticRegionId("KR-11");
 
         complete(createDomesticTrip(traveler, "서울 완료", seoulId, "2026-05-01", "2026-05-02"), traveler);
         createDomesticTrip(traveler, "서울 계획", seoulId, "2026-06-01", "2026-06-03");
@@ -160,12 +160,12 @@ class MapControllerTest {
         return result.getResponse().getCookie(AuthController.ACCESS_TOKEN_COOKIE);
     }
 
-    private Long createInternationalTrip(Cookie traveler, String title, Long countryId, String startDate, String endDate) throws Exception {
+    private Long createInternationalTrip(Cookie traveler, String title, String countryId, String startDate, String endDate) throws Exception {
         return idFrom(mockMvc.perform(post("/api/trips")
                         .cookie(traveler)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"title":"%s","travel_scope":"INTERNATIONAL","country_id":%d,"city_name":"도시","start_date":"%s","end_date":"%s"}
+                                {"title":"%s","travel_scope":"INTERNATIONAL","country_id":"%s","city_name":"도시","start_date":"%s","end_date":"%s"}
                                 """.formatted(title, countryId, startDate, endDate)))
                 .andExpect(status().isCreated())
                 .andReturn()
@@ -173,12 +173,12 @@ class MapControllerTest {
                 .getContentAsString());
     }
 
-    private Long createDomesticTrip(Cookie traveler, String title, Long domesticRegionId, String startDate, String endDate) throws Exception {
+    private Long createDomesticTrip(Cookie traveler, String title, String domesticRegionId, String startDate, String endDate) throws Exception {
         return idFrom(mockMvc.perform(post("/api/trips")
                         .cookie(traveler)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"title":"%s","travel_scope":"DOMESTIC","domestic_region_id":%d,"city_name":"서울","start_date":"%s","end_date":"%s"}
+                                {"title":"%s","travel_scope":"DOMESTIC","domestic_region_id":"%s","city_name":"서울","start_date":"%s","end_date":"%s"}
                                 """.formatted(title, domesticRegionId, startDate, endDate)))
                 .andExpect(status().isCreated())
                 .andReturn()
@@ -186,12 +186,12 @@ class MapControllerTest {
                 .getContentAsString());
     }
 
-    private Long createInternationalBucket(Cookie traveler, String title, Long countryId) throws Exception {
+    private Long createInternationalBucket(Cookie traveler, String title, String countryId) throws Exception {
         return idFrom(mockMvc.perform(post("/api/buckets")
                         .cookie(traveler)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"title":"%s","travel_scope":"INTERNATIONAL","country_id":%d,"city_name":"도시","priority":3}
+                                {"title":"%s","travel_scope":"INTERNATIONAL","country_id":"%s","city_name":"도시","priority":3}
                                 """.formatted(title, countryId)))
                 .andExpect(status().isCreated())
                 .andReturn()
@@ -199,12 +199,12 @@ class MapControllerTest {
                 .getContentAsString());
     }
 
-    private Long createDomesticBucket(Cookie traveler, String title, Long domesticRegionId) throws Exception {
+    private Long createDomesticBucket(Cookie traveler, String title, String domesticRegionId) throws Exception {
         return idFrom(mockMvc.perform(post("/api/buckets")
                         .cookie(traveler)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"title":"%s","travel_scope":"DOMESTIC","domestic_region_id":%d,"city_name":"서울","priority":3}
+                                {"title":"%s","travel_scope":"DOMESTIC","domestic_region_id":"%s","city_name":"서울","priority":3}
                                 """.formatted(title, domesticRegionId)))
                 .andExpect(status().isCreated())
                 .andReturn()
@@ -232,11 +232,11 @@ class MapControllerTest {
         return JsonPath.parse(body).read("$.data.id", Long.class);
     }
 
-    private Long domesticRegionId(String code) {
-        return jdbcTemplate.queryForObject("select id from domestic_regions where code = ?", Long.class, code);
+    private String domesticRegionId(String code) {
+        return jdbcTemplate.queryForObject("select code from domestic_regions where code = ?", String.class, code);
     }
 
-    private Long countryId(String codeAlpha2) {
-        return jdbcTemplate.queryForObject("select id from countries where code_alpha2 = ?", Long.class, codeAlpha2);
+    private String countryId(String codeAlpha2) {
+        return jdbcTemplate.queryForObject("select code_alpha2 from countries where code_alpha2 = ?", String.class, codeAlpha2);
     }
 }

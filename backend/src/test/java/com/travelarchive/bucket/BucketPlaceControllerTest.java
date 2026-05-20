@@ -71,7 +71,7 @@ class BucketPlaceControllerTest {
     @Test
     void createsListsGetsUpdatesAndDeletesOwnedBuckets() throws Exception {
         Cookie traveler = signup("bucket-owner@example.com");
-        Long domesticRegionId = domesticRegionId("KR-11");
+        String domesticRegionId = domesticRegionId("KR-11");
 
         Long bucketId = idFrom(createDomesticBucket(traveler, "서울 가기", domesticRegionId)
                 .andExpect(status().isCreated())
@@ -112,7 +112,7 @@ class BucketPlaceControllerTest {
     void enforcesOwnershipAndScopeValidation() throws Exception {
         Cookie owner = signup("bucket-owner2@example.com");
         Cookie other = signup("bucket-other@example.com");
-        Long countryId = countryId("JP");
+        String countryId = countryId("JP");
 
         Long bucketId = idFrom(createInternationalBucket(owner, countryId)
                 .andExpect(status().isCreated())
@@ -135,7 +135,7 @@ class BucketPlaceControllerTest {
                         .cookie(owner)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"title":"도시 누락","travel_scope":"INTERNATIONAL","country_id":%d}
+                                {"title":"도시 누락","travel_scope":"INTERNATIONAL","country_id":"%s"}
                                 """.formatted(countryId)))
                 .andExpect(status().isBadRequest());
     }
@@ -143,7 +143,7 @@ class BucketPlaceControllerTest {
     @Test
     void convertsBucketToPlannedTripWithGeneratedDaysAndChecklistTemplateItems() throws Exception {
         Cookie traveler = signup("bucket-convert@example.com");
-        Long countryId = countryId("JP");
+        String countryId = countryId("JP");
 
         Long bucketId = idFrom(createInternationalBucket(traveler, countryId)
                 .andReturn()
@@ -180,7 +180,7 @@ class BucketPlaceControllerTest {
     @Test
     void blocksVisitedAndOnHoldBucketConversion() throws Exception {
         Cookie traveler = signup("bucket-block@example.com");
-        Long domesticRegionId = domesticRegionId("KR-11");
+        String domesticRegionId = domesticRegionId("KR-11");
         Long bucketId = idFrom(createDomesticBucket(traveler, "보류 여행", domesticRegionId)
                 .andReturn()
                 .getResponse()
@@ -216,29 +216,29 @@ class BucketPlaceControllerTest {
     }
 
     private org.springframework.test.web.servlet.ResultActions createDomesticBucket(Cookie traveler, String title,
-                                                                                    Long domesticRegionId) throws Exception {
+                                                                                    String domesticRegionId) throws Exception {
         return mockMvc.perform(post("/api/buckets")
                 .cookie(traveler)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                        {"title":"%s","travel_scope":"DOMESTIC","domestic_region_id":%d,"city_name":"서울","reason":"맛집","expected_budget":150000,"desired_season":"봄","companion":"친구","priority":2,"reference_url":"https://example.com","memo":"메모"}
+                        {"title":"%s","travel_scope":"DOMESTIC","domestic_region_id":"%s","city_name":"서울","reason":"맛집","expected_budget":150000,"desired_season":"봄","companion":"친구","priority":2,"reference_url":"https://example.com","memo":"메모"}
                         """.formatted(title, domesticRegionId)));
     }
 
-    private org.springframework.test.web.servlet.ResultActions createInternationalBucket(Cookie traveler, Long countryId) throws Exception {
+    private org.springframework.test.web.servlet.ResultActions createInternationalBucket(Cookie traveler, String countryId) throws Exception {
         return mockMvc.perform(post("/api/buckets")
                 .cookie(traveler)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                        {"title":"일본 가기","travel_scope":"INTERNATIONAL","country_id":%d,"city_name":"도쿄","reason":"벚꽃","companion":"친구","priority":3}
+                        {"title":"일본 가기","travel_scope":"INTERNATIONAL","country_id":"%s","city_name":"도쿄","reason":"벚꽃","companion":"친구","priority":3}
                         """.formatted(countryId)));
     }
 
-    private Long domesticRegionId(String code) {
-        return jdbcTemplate.queryForObject("select id from domestic_regions where code = ?", Long.class, code);
+    private String domesticRegionId(String code) {
+        return jdbcTemplate.queryForObject("select code from domestic_regions where code = ?", String.class, code);
     }
 
-    private Long countryId(String codeAlpha2) {
-        return jdbcTemplate.queryForObject("select id from countries where code_alpha2 = ?", Long.class, codeAlpha2);
+    private String countryId(String codeAlpha2) {
+        return jdbcTemplate.queryForObject("select code_alpha2 from countries where code_alpha2 = ?", String.class, codeAlpha2);
     }
 }
