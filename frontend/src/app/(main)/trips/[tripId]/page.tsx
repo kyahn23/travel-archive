@@ -374,9 +374,9 @@ export default function TripDetailPage() {
                   {/* 즉시 실행 함수로 복잡한 조건 분기를 JSX 안에서 한 번에 처리합니다. */}
                   {(() => {
                     const loc = trip.travelScope === "INTERNATIONAL" && trip.countryId
-                      ? COUNTRIES.find((c) => c.id === trip.countryId)?.nameKo
-                      : trip.domesticRegionId
-                        ? DOMESTIC_REGIONS.find((r) => r.id === trip.domesticRegionId)?.nameKo
+  ? COUNTRIES.find((c) => c.code === trip.countryId)?.nameKo
+  : trip.domesticRegionId
+  ? DOMESTIC_REGIONS.find((r) => r.code === trip.domesticRegionId)?.nameKo
                         : null;
                     return loc ? (
                       <span className="text-muted-foreground"> · {loc}</span>

@@ -54,8 +54,8 @@ export default function TripsPage() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [travelScope, setTravelScope] = useState<TravelScope>("DOMESTIC");
-  const [countryId, setCountryId] = useState<number | null>(null);
-  const [domesticRegionId, setDomesticRegionId] = useState<number | null>(null);
+  const [countryId, setCountryId] = useState<string | null>(null);
+  const [domesticRegionId, setDomesticRegionId] = useState<string | null>(null);
   const [cityName, setCityName] = useState("");
   const [createError, setCreateError] = useState("");
   const [creating, setCreating] = useState(false);
@@ -214,14 +214,14 @@ export default function TripsPage() {
                   <select
                     id="trip-region"
                     value={domesticRegionId ?? ""}
-                    onChange={(e) => setDomesticRegionId(e.target.value ? Number(e.target.value) : null)}
+                    onChange={(e) => setDomesticRegionId(e.target.value || null)}
                     disabled={creating}
                     className={selectClass}
                   >
                     <option value="">지역을 선택하세요</option>
                     {/* 배열 원소 r은 DOMESTIC_REGIONS의 타입 추론을 그대로 이어받습니다. */}
                     {DOMESTIC_REGIONS.map((r) => (
-                      <option key={r.id} value={r.id}>
+                      <option key={r.code} value={r.code}>
                         {r.nameKo}
                       </option>
                     ))}
@@ -235,14 +235,14 @@ export default function TripsPage() {
                   <select
                     id="trip-country"
                     value={countryId ?? ""}
-                    onChange={(e) => setCountryId(e.target.value ? Number(e.target.value) : null)}
+                    onChange={(e) => setCountryId(e.target.value || null)}
                     disabled={creating}
                     className={selectClass}
                   >
                     <option value="">국가를 선택하세요</option>
                     {/* 마찬가지로 c는 COUNTRIES 배열의 원소 타입으로 자동 추론됩니다. */}
                     {COUNTRIES.map((c) => (
-                      <option key={c.id} value={c.id}>
+                      <option key={c.code} value={c.code}>
                         {c.nameKo}
                       </option>
                     ))}

@@ -39,8 +39,8 @@ export function BucketForm({ onCreated, onCancel }: BucketFormProps) {
   // useState<TravelScope>(...)처럼 제네릭을 명시하지 않아도, 초기값 "DOMESTIC"으로부터 타입을 추론합니다.
   const [travelScope, setTravelScope] = useState<TravelScope>("DOMESTIC");
   // number | null 은 "숫자일 수도 있고 값이 없으면 null"이라는 뜻의 유니언 타입입니다.
-  const [countryId, setCountryId] = useState<number | null>(null);
-  const [domesticRegionId, setDomesticRegionId] = useState<number | null>(null);
+  const [countryId, setCountryId] = useState<string | null>(null);
+  const [domesticRegionId, setDomesticRegionId] = useState<string | null>(null);
   const [cityName, setCityName] = useState("");
   const [companion, setCompanion] = useState("");
   const [referenceUrl, setReferenceUrl] = useState("");
@@ -155,13 +155,13 @@ export function BucketForm({ onCreated, onCancel }: BucketFormProps) {
               <select
                 id="bucket-region"
                 value={domesticRegionId ?? ""}
-                onChange={(e) => setDomesticRegionId(e.target.value ? Number(e.target.value) : null)}
+                onChange={(e) => setDomesticRegionId(e.target.value || null)}
                 disabled={pending}
                 className={selectClass}
               >
                 <option value="">지역을 선택하세요</option>
                 {DOMESTIC_REGIONS.map((r) => (
-                  <option key={r.id} value={r.id}>
+                  <option key={r.code} value={r.code}>
                     {r.nameKo}
                   </option>
                 ))}
@@ -176,13 +176,13 @@ export function BucketForm({ onCreated, onCancel }: BucketFormProps) {
               <select
                 id="bucket-country"
                 value={countryId ?? ""}
-                onChange={(e) => setCountryId(e.target.value ? Number(e.target.value) : null)}
+                onChange={(e) => setCountryId(e.target.value || null)}
                 disabled={pending}
                 className={selectClass}
               >
                 <option value="">국가를 선택하세요</option>
                 {COUNTRIES.map((c) => (
-                  <option key={c.id} value={c.id}>
+                  <option key={c.code} value={c.code}>
                     {c.nameKo}
                   </option>
                 ))}

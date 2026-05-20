@@ -20,10 +20,10 @@ const STATUS_VARIANT: Record<BucketStatus, "default" | "tealSoft" | "muted" | "s
 // Bucket 객체에 들어있는 travelScope/countryId/domesticRegionId를 바탕으로 표시용 이름을 찾습니다.
 function getLocationName(bucket: Bucket): string | null {
   if (bucket.travelScope === "INTERNATIONAL" && bucket.countryId) {
-    return COUNTRIES.find((c) => c.id === bucket.countryId)?.nameKo ?? null;
+    return COUNTRIES.find((c) => c.code === bucket.countryId)?.nameKo ?? null;
   }
   if (bucket.travelScope === "DOMESTIC" && bucket.domesticRegionId) {
-    return DOMESTIC_REGIONS.find((r) => r.id === bucket.domesticRegionId)?.nameKo ?? null;
+    return DOMESTIC_REGIONS.find((r) => r.code === bucket.domesticRegionId)?.nameKo ?? null;
   }
   return null;
 }

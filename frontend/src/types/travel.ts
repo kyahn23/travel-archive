@@ -34,8 +34,8 @@ export interface Trip {
   id: number; // `: number` 는 이 값이 숫자여야 함을 뜻하는 타입 주석입니다.
   title: string; // 문자열만 허용합니다.
   travelScope: TravelScope; // 위에서 정의한 별칭 타입을 재사용합니다.
-  countryId: number | null; // `| null` 은 실제 값이 없을 수도 있음을 뜻합니다.
-  domesticRegionId: number | null; // 국내 여행일 때 지역 ID가 없을 수 있습니다.
+  countryId: string | null; // ISO 국가 코드 (예: "JP", "US")
+  domesticRegionId: string | null; // 지역 코드 (예: "KR-11", "KR-26")
   cityName: string | null; // 도시명이 없는 경우도 허용합니다.
   startDate: string; // 날짜를 문자열로 보관합니다.
   endDate: string; // 종료일도 문자열입니다.
@@ -74,8 +74,8 @@ export interface TripDay {
 export interface CreateTripPayload {
   title: string;
   travelScope: TravelScope;
-  countryId?: number | null; // 선택적 속성입니다.
-  domesticRegionId?: number | null; // 국내 지역 ID는 선택 사항입니다.
+  countryId?: string | null; // 선택적 속성입니다.
+  domesticRegionId?: string | null; // 국내 지역 코드는 선택 사항입니다.
   cityName?: string | null; // 도시명도 선택적으로 보낼 수 있습니다.
   startDate: string;
   endDate: string;
@@ -110,8 +110,8 @@ export interface Bucket {
   id: number;
   title: string;
   travelScope: TravelScope;
-  countryId: number | null;
-  domesticRegionId: number | null;
+  countryId: string | null;
+  domesticRegionId: string | null;
   cityName: string | null;
   reason: string | null;
   expectedBudget: number | null;
@@ -134,8 +134,8 @@ export interface Bucket {
 export interface CreateBucketPayload {
   title: string;
   travelScope: TravelScope;
-  countryId?: number | null;
-  domesticRegionId?: number | null;
+  countryId?: string | null;
+  domesticRegionId?: string | null;
   cityName?: string | null;
   reason?: string | null;
   expectedBudget?: number | null;
@@ -191,47 +191,47 @@ export const SCOPE_LABEL: Record<TravelScope, string> = {
 // 즉, 단순한 `string` 이 아니라 실제 문자열 값 자체를 타입으로 보존합니다.
 // 그래서 실수로 다른 문자열을 넣는 것을 더 강하게 막을 수 있습니다.
 export const COUNTRIES = [
-  { id: 1, code: "KR", nameKo: "대한민국" },
-  { id: 2, code: "JP", nameKo: "일본" },
-  { id: 3, code: "US", nameKo: "미국" },
-  { id: 4, code: "FR", nameKo: "프랑스" },
-  { id: 5, code: "IT", nameKo: "이탈리아" },
-  { id: 6, code: "ES", nameKo: "스페인" },
-  { id: 7, code: "GB", nameKo: "영국" },
-  { id: 8, code: "DE", nameKo: "독일" },
-  { id: 9, code: "TH", nameKo: "태국" },
-  { id: 10, code: "VN", nameKo: "베트남" },
-  { id: 11, code: "SG", nameKo: "싱가포르" },
-  { id: 12, code: "TW", nameKo: "대만" },
-  { id: 13, code: "CN", nameKo: "중국" },
-  { id: 14, code: "AU", nameKo: "호주" },
-  { id: 15, code: "CA", nameKo: "캐나다" },
-  { id: 16, code: "NZ", nameKo: "뉴질랜드" },
-  { id: 17, code: "CH", nameKo: "스위스" },
-  { id: 18, code: "AT", nameKo: "오스트리아" },
-  { id: 19, code: "CZ", nameKo: "체코" },
-  { id: 20, code: "TR", nameKo: "튀르키예" },
+  { code: "KR", nameKo: "대한민국" },
+  { code: "JP", nameKo: "일본" },
+  { code: "US", nameKo: "미국" },
+  { code: "FR", nameKo: "프랑스" },
+  { code: "IT", nameKo: "이탈리아" },
+  { code: "ES", nameKo: "스페인" },
+  { code: "GB", nameKo: "영국" },
+  { code: "DE", nameKo: "독일" },
+  { code: "TH", nameKo: "태국" },
+  { code: "VN", nameKo: "베트남" },
+  { code: "SG", nameKo: "싱가포르" },
+  { code: "TW", nameKo: "대만" },
+  { code: "CN", nameKo: "중국" },
+  { code: "AU", nameKo: "호주" },
+  { code: "CA", nameKo: "캐나다" },
+  { code: "NZ", nameKo: "뉴질랜드" },
+  { code: "CH", nameKo: "스위스" },
+  { code: "AT", nameKo: "오스트리아" },
+  { code: "CZ", nameKo: "체코" },
+  { code: "TR", nameKo: "튀르키예" },
 ] as const;
 
 // 국내 지역 데이터도 마찬가지로 `as const` 로 고정합니다.
 export const DOMESTIC_REGIONS = [
-  { id: 1, code: "KR-11", nameKo: "서울특별시" },
-  { id: 2, code: "KR-26", nameKo: "부산광역시" },
-  { id: 3, code: "KR-27", nameKo: "대구광역시" },
-  { id: 4, code: "KR-28", nameKo: "인천광역시" },
-  { id: 5, code: "KR-29", nameKo: "광주광역시" },
-  { id: 6, code: "KR-30", nameKo: "대전광역시" },
-  { id: 7, code: "KR-31", nameKo: "울산광역시" },
-  { id: 8, code: "KR-36", nameKo: "세종특별자치시" },
-  { id: 9, code: "KR-41", nameKo: "경기도" },
-  { id: 10, code: "KR-42", nameKo: "강원특별자치도" },
-  { id: 11, code: "KR-43", nameKo: "충청북도" },
-  { id: 12, code: "KR-44", nameKo: "충청남도" },
-  { id: 13, code: "KR-45", nameKo: "전북특별자치도" },
-  { id: 14, code: "KR-46", nameKo: "전라남도" },
-  { id: 15, code: "KR-47", nameKo: "경상북도" },
-  { id: 16, code: "KR-48", nameKo: "경상남도" },
-  { id: 17, code: "KR-49", nameKo: "제주특별자치도" },
+  { code: "KR-11", nameKo: "서울특별시" },
+  { code: "KR-26", nameKo: "부산광역시" },
+  { code: "KR-27", nameKo: "대구광역시" },
+  { code: "KR-28", nameKo: "인천광역시" },
+  { code: "KR-29", nameKo: "광주광역시" },
+  { code: "KR-30", nameKo: "대전광역시" },
+  { code: "KR-31", nameKo: "울산광역시" },
+  { code: "KR-36", nameKo: "세종특별자치시" },
+  { code: "KR-41", nameKo: "경기도" },
+  { code: "KR-42", nameKo: "강원특별자치도" },
+  { code: "KR-43", nameKo: "충청북도" },
+  { code: "KR-44", nameKo: "충청남도" },
+  { code: "KR-45", nameKo: "전북특별자치도" },
+  { code: "KR-46", nameKo: "전라남도" },
+  { code: "KR-47", nameKo: "경상북도" },
+  { code: "KR-48", nameKo: "경상남도" },
+  { code: "KR-49", nameKo: "제주특별자치도" },
 ] as const;
 
 /* ── Map ── */

@@ -23,7 +23,7 @@ describe('travel DTO types', () => {
     const payload = {
       title: 'Seoul weekend',
       travelScope: 'DOMESTIC',
-      domesticRegionId: 1,
+      domesticRegionId: 'KR-11',
       startDate: '2026-05-01',
       endDate: '2026-05-03',
       status: 'PLANNED',
@@ -47,7 +47,7 @@ describe('travel DTO types', () => {
     const payload = {
       title: 'Swiss Alps trek',
       travelScope: 'INTERNATIONAL',
-      countryId: 17,
+      countryId: 'CH',
       expectedBudget: 2500000,
       desiredSeason: 'SUMMER',
       priority: 1,
@@ -63,7 +63,7 @@ describe('travel DTO types', () => {
     expect(payload).toMatchObject({
       title: 'Swiss Alps trek',
       travelScope: 'INTERNATIONAL',
-      countryId: 17,
+      countryId: 'CH',
       status: 'WANT_TO_GO',
     });
   });

@@ -34,10 +34,10 @@ function daysBetween(start: string, end: string) {
 // Trip 타입 객체에서 국내/해외 위치명을 안전하게 찾아서 반환합니다.
 function getLocationName(trip: Trip): string | null {
   if (trip.travelScope === "INTERNATIONAL" && trip.countryId) {
-    return COUNTRIES.find((c) => c.id === trip.countryId)?.nameKo ?? null;
+    return COUNTRIES.find((c) => c.code === trip.countryId)?.nameKo ?? null;
   }
   if (trip.travelScope === "DOMESTIC" && trip.domesticRegionId) {
-    return DOMESTIC_REGIONS.find((r) => r.id === trip.domesticRegionId)?.nameKo ?? null;
+    return DOMESTIC_REGIONS.find((r) => r.code === trip.domesticRegionId)?.nameKo ?? null;
   }
   return null;
 }

@@ -32,10 +32,10 @@ function getLocationName(trip: Trip): string | null {
   if (trip.travelScope === "INTERNATIONAL" && trip.countryId) {
     // ?. 는 optional chaining입니다. find() 결과가 없을 수도 있으니, 없으면 undefined 대신 안전하게 넘어갑니다.
     // ?? null 은 nullish coalescing입니다. undefined 또는 null일 때만 오른쪽 null을 사용합니다.
-    return COUNTRIES.find((c) => c.id === trip.countryId)?.nameKo ?? null;
+    return COUNTRIES.find((c) => c.code === trip.countryId)?.nameKo ?? null;
   }
   if (trip.travelScope === "DOMESTIC" && trip.domesticRegionId) {
-    return DOMESTIC_REGIONS.find((r) => r.id === trip.domesticRegionId)?.nameKo ?? null;
+    return DOMESTIC_REGIONS.find((r) => r.code === trip.domesticRegionId)?.nameKo ?? null;
   }
   return null;
 }
