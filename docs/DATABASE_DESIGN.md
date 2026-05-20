@@ -11,7 +11,7 @@
 |------|------|
 | DBMS | PostgreSQL 16 (개발/운영), H2 (로컬 dev/test) |
 | ORM | JPA (Hibernate) |
-| 스키마 관리 | Flyway 마이그레이션 (`db/migration/`) |
+| 스키마 관리 | JPA `ddl-auto` (dev: `update`, 운영: `validate`) |
 | 공통 전략 | `BaseEntity` 상속으로 `created_at`/`updated_at` 자동 관리 |
 
 ---
@@ -424,15 +424,16 @@ trips SELECT (status='COMPLETED', 날짜 집계)
 
 ---
 
-## 6. Flyway 마이그레이션
+## 6. 스키마 관리
 
-| 파일 | 내용 |
-|------|------|
-| `V1__init_schema.sql` | 전체 테이블, 제약, 인덱스 생성 |
-| `V2__seed_reference_data.sql` | 국가/국내 지역 seed 데이터 |
-| `V3__seed_checklist_templates.sql` | 체크리스트 템플릿 seed |
-| `V4__demo_seed.sql` | 데모 계정, 샘플 여행/버킷/타임라인/사진 |
-| `V5__add_bucket_companion.sql` | bucket_places에 companion 컬럼 추가 |
+JPA/Hibernate의 `ddl-auto` 설정으로 스키마를 관리합니다.
+
+| 프로필 | `ddl-auto` | 설명 |
+|--------|-----------|------|
+| dev (로컬) | `update` | 엔티티 변경 시 스키마 자동 갱신 |
+| 기본 (운영) | `validate` | 엔티티와 DB 스키마 일치 여부만 검증 |
+
+> 참고: 현재 프로젝트는 Flyway 마이그레이션 파일 없이 JPA 기반 스키마 생성을 사용합니다. 향후 Flyway 도입 시 이 섹션을 업데이트하세요.
 
 ---
 
@@ -514,6 +515,12 @@ JPA가 자동 생성하는 인덱스:
 ### `CANCELLED` 여행은 지도/통계에서 제외되는 이유?
 > 실제 방문하지 않은 여행은 여행 이력에 포함되지 않아야 합니다. 데이터 집계 시 WHERE 절에서 필터링합니다.
 
+### 왜 대부분의 테이블은 `BIGINT id`를 PK로 쓰나?
+> JPA 환경에서 연관관계 매핑과 FK 참조 효율성을 위해 서로게이트 키(Surrogate Key)를 사용합니다. 특히 `users.email`처럼 자연키가 가변적이거나 긴 경우, 별도의 불변 `id`를 두는 것이 인덱스/조인 성능과 데이터 무결성 측면에서 유리합니다.
+
+### 왜 `countries`와 `domestic_regions`는 `code`를 PK로 쓰나?
+> 이들은 **참조 데이터(Reference Data)** 로, 값이 절대 변하지 않고 짧으며 의미가 명확합니다. ISO 국가 코드(`KR`, `JP`)나 행정구역 코드(`KR-11`)는 불변의 자연키(Natural Key)이므로 서로게이트 키를 추가하는 것은 불필요한 인덱스와 조인 오버헤드만 발생시킵니다. FK 컬럼(`trips.country_id`, `trips.domestic_region_id`)도 해당 코드 문자열을 직접 참조합니다.
+
 ---
 
-> 마지막 업데이트: 2026-05-19
+> 마지막 업데이트: 2026-05-20

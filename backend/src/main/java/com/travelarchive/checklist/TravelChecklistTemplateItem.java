@@ -30,6 +30,13 @@ public class TravelChecklistTemplateItem {
     @Column(name = "sort_order", nullable = false)
     private Integer sortOrder = 0;
 
+    public TravelChecklistTemplateItem(TravelChecklistTemplate template, String category, String content, Integer sortOrder) {
+        this.template = template;
+        this.category = category;
+        this.content = content;
+        this.sortOrder = sortOrder;
+    }
+
     protected TravelChecklistTemplateItem() {
     }
 

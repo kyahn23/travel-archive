@@ -30,6 +30,13 @@ public class TravelChecklistTemplate {
     @Column(nullable = false)
     private Boolean active = true;
 
+    public TravelChecklistTemplate(TravelScope travelScope, String title, Integer displayOrder, Boolean active) {
+        this.travelScope = travelScope;
+        this.title = title;
+        this.displayOrder = displayOrder;
+        this.active = active;
+    }
+
     protected TravelChecklistTemplate() {
     }
 
