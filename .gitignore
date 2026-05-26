@@ -61,6 +61,8 @@ backend/storage/uploads/
 .sisyphus/
 .codex/
 .agents/
+AGENTS.md
+CLAUDE.md
 
 # =============================================================================
 # Misc
