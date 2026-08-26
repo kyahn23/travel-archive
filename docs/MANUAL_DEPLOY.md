@@ -37,9 +37,9 @@ docker exec home-postgres sh -lc '
 위 결과와 배포 대상 migration을 비교하고 backup/restore evidence를 확인한다. 그 다음에만 검증된 release 절차로 build/up한다.
 
 ```bash
-APP_VERSION=<verified-git-sha> docker compose build backend frontend
-APP_VERSION=<verified-git-sha> docker compose up -d --no-build
-docker compose ps
+APP_VERSION=<verified-git-sha> docker compose --env-file .env.app build backend frontend
+APP_VERSION=<verified-git-sha> docker compose --env-file .env.app up -d --no-build
+docker compose --env-file .env.app ps
 ```
 
 검증은 실제 접근 경로에서 수행한다.

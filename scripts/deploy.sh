@@ -18,8 +18,8 @@ else
   cd "$HOME/$REMOTE_DIR"
 fi
 
-test -f .env
-chmod 600 .env
+test -f .env.app
+chmod 600 .env.app
 
 PREVIOUS_VERSION=""
 if [[ -s .current-version ]]; then
@@ -30,7 +30,7 @@ rollback() {
   local rc=$?
   if [[ -n "$PREVIOUS_VERSION" ]]; then
     echo "deployment failed; restoring $PREVIOUS_VERSION" >&2
-    APP_VERSION="$PREVIOUS_VERSION" docker compose up -d --no-build || true
+    APP_VERSION="$PREVIOUS_VERSION" docker compose --env-file .env.app up -d --no-build || true
   else
     echo "first deployment failed; no previous release exists" >&2
   fi
@@ -39,14 +39,14 @@ rollback() {
 trap rollback ERR INT TERM
 
 export APP_VERSION
-docker compose config --quiet
-docker compose build backend frontend
-docker compose up -d --no-build --wait
+docker compose --env-file .env.app config --quiet
+docker compose --env-file .env.app build backend frontend
+docker compose --env-file .env.app up -d --no-build --wait
 
-docker compose exec -T backend curl --fail --silent http://localhost:8080/api/health >/dev/null
-docker compose exec -T frontend node -e \
+docker compose --env-file .env.app exec -T backend curl --fail --silent http://localhost:8080/api/health >/dev/null
+docker compose --env-file .env.app exec -T frontend node -e \
   "fetch('http://localhost:3000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
-docker compose exec -T frontend node -e \
+docker compose --env-file .env.app exec -T frontend node -e \
   "fetch('http://localhost:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
 printf '%s\n' "$APP_VERSION" > .current-version.next

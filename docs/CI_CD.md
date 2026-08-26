@@ -42,4 +42,4 @@
 - healthy `home-postgres`와 빈 `travel_archive` DB/role
 - NPM은 앱 배포 후 `travel-archive` network에 연결
 
-최초 DB 생성에는 `POSTGRES_ADMIN_PASSWORD`가 필요하지만 애플리케이션 배포 workflow secret은 아니다. DB 생성 후 root `.env`와 GitHub에는 애플리케이션 `DB_PASSWORD`만 사용한다.
+최초 DB 생성에는 root `.env`의 `POSTGRES_ADMIN_PASSWORD`가 필요하지만 애플리케이션 배포 workflow secret은 아니다. 자동 배포는 별도 `.env.app`만 갱신하므로 인프라용 root `.env`를 덮어쓰지 않는다.
