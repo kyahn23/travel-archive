@@ -16,8 +16,8 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("next/dynamic", () => ({
   __esModule: true,
-  default: (loader: () => Promise<{ default: React.ComponentType }>) => {
-    function DynamicPlaceholder(props: Record<string, unknown>) {
+  default: () => {
+    function DynamicPlaceholder() {
       return <div data-testid="dynamic-map">map-placeholder</div>;
     }
     DynamicPlaceholder.displayName = "DynamicMap";

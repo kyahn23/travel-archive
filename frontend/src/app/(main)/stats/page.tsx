@@ -19,7 +19,6 @@ import {
 } from "recharts";
 // `import type`는 실행 시 코드가 아니라 타입 정보만 가져오는 TypeScript 문법입니다.
 import type { StatsSummary, MonthlyCount, TopRegion } from "@/types/travel";
-import { SCOPE_LABEL } from "@/types/travel";
 
 // `as const`는 배열/객체를 "읽기 전용 + 리터럴 타입 유지"로 고정합니다.
 // 그래서 `key` 값이 그냥 string이 아니라 정확한 문자열 리터럴 타입이 되어,

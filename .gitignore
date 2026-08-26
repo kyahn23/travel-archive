@@ -36,6 +36,10 @@ replay_pid*
 .idea/
 *.iml
 .vscode/
+.classpath
+.factorypath
+.project
+.settings/
 *.swp
 *.swo
 *~
@@ -61,6 +65,9 @@ backend/storage/uploads/
 .sisyphus/
 .codex/
 .agents/
+.omo/
+.opencode/
+.playwright-mcp/
 AGENTS.md
 CLAUDE.md
 
@@ -70,3 +77,12 @@ CLAUDE.md
 *.bak
 *.tmp
 *.swp
+tsconfig.tsbuildinfo
+
+# Local agent/tool bootstrap files and QA screenshots
+/opencode.json
+/package.json
+/package-lock.json
+/home-map-*.png
+/korea-map-*.png
+/backend/bin/

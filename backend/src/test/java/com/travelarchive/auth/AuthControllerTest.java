@@ -17,6 +17,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
@@ -26,7 +27,6 @@ import org.springframework.test.web.servlet.MvcResult;
 @AutoConfigureMockMvc
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @TestPropertySource(properties = {
-        "spring.jpa.hibernate.ddl-auto=create",
         "jwt.secret=test-jwt-secret-for-auth-controller-test-1234567890"
 })
 class AuthControllerTest {
@@ -42,8 +42,12 @@ class AuthControllerTest {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
     @BeforeEach
     void cleanDatabase() {
+        jdbcTemplate.execute("truncate table users restart identity cascade");
         refreshTokenRepository.deleteAll();
         userRepository.deleteAll();
     }
@@ -95,6 +99,7 @@ class AuthControllerTest {
         mockMvc.perform(post("/api/auth/refresh").cookie(refreshCookie))
                 .andExpect(status().isOk())
                 .andExpect(cookie().httpOnly(AuthController.ACCESS_TOKEN_COOKIE, true))
+                .andExpect(cookie().httpOnly(AuthController.REFRESH_TOKEN_COOKIE, true))
                 .andExpect(jsonPath("$.data.tokenType").value("Bearer"));
 
         mockMvc.perform(post("/api/auth/logout").cookie(refreshCookie))

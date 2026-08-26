@@ -1,0 +1,58 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: travel_archive
+      POSTGRES_USER: travel_archive
+      POSTGRES_PASSWORD: smoke-db-password
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U travel_archive -d travel_archive"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+    labels:
+      com.travelarchive.owner: ${TA_SMOKE_RUN_ID:-unset}
+
+  backend:
+    build:
+      context: ./backend
+      args:
+        APP_VERSION: smoke-${TA_SMOKE_RUN_ID:-local}
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/travel_archive
+      DB_USERNAME: travel_archive
+      DB_PASSWORD: smoke-db-password
+      JWT_SECRET: smoke-jwt-secret-at-least-32-characters-long
+      COOKIE_SECURE: "false"
+      SPRING_PROFILES_ACTIVE: dev
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:8080/api/health"]
+      interval: 3s
+      timeout: 5s
+      retries: 30
+    labels:
+      com.travelarchive.owner: ${TA_SMOKE_RUN_ID:-unset}
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        API_ORIGIN: http://backend:8080
+        APP_VERSION: smoke-${TA_SMOKE_RUN_ID:-local}
+    environment:
+      API_ORIGIN: http://backend:8080
+    ports:
+      - "127.0.0.1:${TA_SMOKE_PORT}:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 3s
+      timeout: 5s
+      retries: 30
+    labels:
+      com.travelarchive.owner: ${TA_SMOKE_RUN_ID:-unset}

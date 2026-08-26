@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
  * `<HTMLInputElement>`의 제네릭은 "이 속성들이 input 요소용"이라는 것을 명확히 합니다.
  * 이 타입 정보는 컴파일 시에만 존재합니다.
  */
-export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {}
+export type InputProps = React.InputHTMLAttributes<HTMLInputElement>;
 
 /**
  * `forwardRef<HTMLInputElement, InputProps>`는 ref가 실제 input DOM을 가리키도록 해 줍니다.

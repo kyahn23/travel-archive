@@ -43,6 +43,7 @@ export function PhotoGallery({ tripId }: PhotoGalleryProps) {
 
   // useCallback으로 fetchPhotos 함수를 메모이즈합니다.
   const fetchPhotos = useCallback(async () => {
+    setError("");
     try {
       const res = await api.get<DayGroup[]>(`/trips/${tripId}/timeline`);
       const entries: PhotoEntry[] = [];
@@ -106,15 +107,19 @@ export function PhotoGallery({ tripId }: PhotoGalleryProps) {
         {photos.map((entry) => (
           <button
             key={entry.photo.id}
+            type="button"
+            aria-label={`${entry.itemTitle} 사진 보기`}
             onClick={() => setSelectedPhoto(entry)}
-            className="group relative aspect-square rounded-xl overflow-hidden bg-muted"
+            className="group relative aspect-square rounded-xl overflow-hidden bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
+            {/* Authenticated file responses are not compatible with Next image optimization. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={`/api/files/${entry.photo.id}`}
               alt={entry.photo.originalFileName}
-              className="h-full w-full object-cover transition-transform group-hover:scale-105"
+              className="h-full w-full object-cover transition-transform group-hover:scale-105 group-focus-visible:scale-105"
             />
-            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent p-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent p-2 opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity">
               <p className="text-caption text-white truncate">{entry.itemTitle}</p>
               <p className="text-micro text-white/70">{formatDate(entry.itemDate)}</p>
             </div>
@@ -128,9 +133,20 @@ export function PhotoGallery({ tripId }: PhotoGalleryProps) {
           onClick={() => setSelectedPhoto(null)}
         >
           <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={`photo-title-${selectedPhoto.photo.id}`}
             className="relative max-h-[85vh] max-w-3xl w-full rounded-xl overflow-hidden bg-card"
             onClick={(e) => e.stopPropagation()}
           >
+            <h2
+              id={`photo-title-${selectedPhoto.photo.id}`}
+              className="sr-only"
+            >
+              {selectedPhoto.itemTitle} 사진
+            </h2>
+            {/* Authenticated file responses are not compatible with Next image optimization. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={`/api/files/${selectedPhoto.photo.id}`}
               alt={selectedPhoto.photo.originalFileName}
@@ -148,16 +164,19 @@ export function PhotoGallery({ tripId }: PhotoGalleryProps) {
                 download
                 target="_blank"
                 rel="noopener noreferrer"
+                aria-label={`${selectedPhoto.photo.originalFileName} 다운로드`}
               >
                 <Button variant="outline" size="sm">
-                  <Download className="mr-1 h-3.5 w-3.5" />
+                  <Download className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
                   다운로드
                 </Button>
               </a>
             </div>
             <button
+              type="button"
+              aria-label="사진 닫기"
               onClick={() => setSelectedPhoto(null)}
-              className="absolute top-3 right-3 rounded-full bg-black/50 p-1.5 text-white hover:bg-black/70"
+              className="absolute top-3 right-3 rounded-full bg-black/50 p-1.5 text-white hover:bg-black/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               ✕
             </button>

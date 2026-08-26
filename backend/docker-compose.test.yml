@@ -1,0 +1,34 @@
+# Test-only PostgreSQL for backend integration tests.
+#
+# No `container_name`, no named persistent volume, no fixed host port —
+# everything is owned by the calling test script (test-with-postgres.sh)
+# via UUID project name + owner label.
+#
+# Run pattern (from scripts/test-with-postgres.sh):
+#   TA_RUN_ID=<uuid> \
+#   COMPOSE_PROJECT_NAME=ta-test-<uuid> \
+#   docker compose -f backend/docker-compose.test.yml up -d
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: travel_archive_test
+      POSTGRES_USER: ta_test
+      POSTGRES_PASSWORD: ta_test_only_password
+    ports:
+      - "127.0.0.1:${TA_TEST_PORT}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ta_test -d travel_archive_test"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+    labels:
+      com.travelarchive.owner: "${TA_RUN_ID:-unset}"
+      com.travelarchive.role: "test-pg"
+    networks:
+      - ta-test-net
+
+networks:
+  ta-test-net:
+    driver: bridge

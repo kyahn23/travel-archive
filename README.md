@@ -1,6 +1,6 @@
 # Travel Archive
 
-개인 여행 기록을 관리하는 풀스택 PWA입니다.
+개인 여행 기록을 관리하는 반응형 풀스택 웹 서비스입니다.
 
 ## 소개
 
@@ -10,8 +10,8 @@ Travel Archive는 사용자가 방문한 여행지를 기록하고, 버킷리스
 
 | 영역 | 기술 |
 |------|------|
-| Backend | Spring Boot 4.0.6, Java 25, Gradle 9.5, JPA, Lombok |
-| Frontend | Next.js 16.2.6, React 19.2.6, TypeScript, Tailwind CSS |
+| Backend | Spring Boot 4.0.6, Java 17, Gradle 9.5, JPA, Lombok |
+| Frontend | Next.js 16.2.7, React 19.2.7, TypeScript, Tailwind CSS |
 | Database | PostgreSQL 16 |
 | 인증 | JWT (httpOnly cookie) |
 | 지도 | Leaflet, @vnedyalk0v/react19-simple-maps, Recharts |
@@ -22,12 +22,13 @@ Travel Archive는 사용자가 방문한 여행지를 기록하고, 버킷리스
 travel-archive/
 ├── backend/          # Spring Boot API 서버
 │   ├── src/main/java/com/travelarchive/...
-│   └── src/main/java/com/travelarchive/common/config/  # SeedDataLoader
+│   └── src/main/resources/db/migration/  # Flyway schema/reference data
 ├── frontend/         # Next.js 프론트엔드
 │   ├── src/app/       # App Router 페이지
 │   ├── src/components/ # UI 컴포넌트
 │   └── src/lib/       # API 클라이언트, 인증
-├── docker-compose.yml # Docker PostgreSQL 설정
+├── docker-compose.infrastructure.yml # 공유 PostgreSQL
+├── docker-compose.yml # 애플리케이션 스택
 └── README.md
 ```
 
@@ -44,8 +45,8 @@ cd travel-archive
 
 | 소프트웨어 | 버전 | 용도 |
 |---|---|---|
-| Java | 25 | 백엔드 실행 |
-| Node.js | 18 이상 | 프론트엔드 실행 |
+| Java | 17 | 백엔드 실행 |
+| Node.js | 20 이상 | 프론트엔드 실행 |
 | Docker | 최신 | PostgreSQL 실행 |
 
 **Docker 설치**
@@ -54,60 +55,20 @@ cd travel-archive
 - **macOS**: [Docker Desktop](https://www.docker.com/products/docker-desktop/) 설치 (Apple Silicon/Intel 모두 지원)
 - **Ubuntu**: `sudo apt update && sudo apt install docker.io docker-compose-plugin`
 
-### 3. 데이터베이스 실행 (Docker)
+### 3. 데이터베이스
 
-PostgreSQL을 Docker로 실행합니다. 별도 설치 없이 어떤 PC에서도 동일한 환경을 구성할 수 있습니다.
+PostgreSQL은 `docker-compose.infrastructure.yml`, 앱은 `docker-compose.yml`로 분리되어 있습니다. 기존 container, volume, DB는 사용자 데이터일 수 있으므로 새 환경임이 확인되기 전에 기동·초기화하지 마십시오. `docker compose down -v`, volume/DB 삭제, Flyway history 수정은 기본 절차가 아닙니다.
 
-```bash
-# 프로젝트 루트에서 실행
-docker compose up -d
-```
+신규 전용 DB를 준비할 때는 먼저 [로컬 DB 가이드](docs/LOCAL_DEV_DB_SETUP.md)를 따르고, root `.env`에는 실제 비밀값을 직접 설정합니다. 문서의 `<postgres-admin-password>`, `<database-password>`, `<jwt-secret>`은 placeholder입니다.
 
-> **참고**:  
-> - 일부 오래된 Docker 버전에서는 `docker-compose` (하이픈 포함) 명령어를 사용합니다.  
-> - `docker compose`가 안 될 경우 `docker-compose`를 시도하세요.  
-> - `.env.example` 파일을 `.env`로 복사하여 포트, 비밀번호 등을 커스터마이징할 수 있습니다.
+DB 생성 계약은 다음과 같습니다.
 
-- PostgreSQL이 `localhost:5432`에서 실행됩니다.
-- DB: `travel_archive` / 사용자: `travel_archive` / 비밀번호: `travel_archive`
+- `init/01-init.sh`: PostgreSQL data directory의 최초 초기화 때 role과 빈 `travel_archive` DB만 생성
+- Flyway `V1__baseline.sql`: 빈 DB에 13개 application table 생성
+- Flyway `V2__legacy_reconciliation.sql`: 지원하는 schema signature와 template unique constraint 조정
+- Flyway `V3__reference_data.sql`: 국가·국내 지역·체크리스트 template 기준 데이터 입력
 
-**Docker PostgreSQL 제어 명령어**
-
-```bash
-# 컨테이너 상태 확인
-docker compose ps
-
-# 로그 확인
-docker compose logs -f postgres
-
-# 컨테이너 중지 (데이터는 유지)
-docker compose down
-
-# 컨테이너 중지 + 데이터 초기화 (PostgreSQL 볼륨 초기화)
-docker compose down -v
-
-# PostgreSQL 재시작
-docker compose restart postgres
-```
-
-**포트 충돌이 발생하는 경우**
-
-로컬에 이미 PostgreSQL이 설치되어 있거나 5432 포트를 사용하는 다른 프로그램이 있으면 충돌이 발생합니다. `.env` 파일을 생성하여 포트를 변경하세요:
-
-```bash
-# 프로젝트 루트에 .env 파일 생성
-echo "POSTGRES_PORT=5433" > .env
-
-# docker-compose.yml 수정 없이 적용
-docker compose up -d
-```
-
-이 경우 백엔드 실행 시에도 동일한 포트를 지정해야 합니다:
-
-```bash
-export DB_URL="jdbc:postgresql://localhost:5433/travel_archive"
-./gradlew bootRun
-```
+`V1__baseline.sql`의 이름에서 baseline은 초기 schema를 뜻합니다. `baseline-on-migrate`의 기본값은 `false`이며, 기존 non-empty schema를 자동 채택하지 않습니다. 테이블과 기준 데이터는 backend 기동 시 Flyway가 V1→V3 순서로 적용하며, `SeedDataLoader`는 사용하지 않습니다.
 
 ### 4. 백엔드 실행
 
@@ -120,7 +81,7 @@ cd backend
 
 기본적으로 `http://localhost:8080`에서 실행됩니다.
 
-빠른 로컬 개발을 위해 `dev` profile을 사용할 수 있습니다. 동일한 PostgreSQL을 사용하며 JPA `ddl-auto: update`로 스키마를 자동 관리합니다:
+`dev` profile도 Flyway로 schema를 적용하고 JPA `ddl-auto: validate`로 일치 여부만 확인합니다:
 
 ```bash
 ./gradlew bootRun --args='--spring.profiles.active=dev'
@@ -136,10 +97,10 @@ npm run dev
 
 기본적으로 `http://localhost:3000`에서 실행됩니다.
 
-프로덕션 빌드는 별도 config 변환 없이 실행됩니다.
+프로덕션 빌드에서 Next.js 서버의 backend 대상은 `API_ORIGIN`으로 지정합니다.
 
 ```bash
-npm run build
+API_ORIGIN=http://localhost:8080 npm run build
 ```
 
 ## 환경별 특이사항
@@ -176,21 +137,6 @@ npm run build
 | `./gradlew: Permission denied` | Gradle wrapper에 실행 권한 없음 | `chmod +x ./gradlew` |
 | 백엔드에서 401 Unauthorized | JWT_SECRET이 설정되지 않음 | `export JWT_SECRET="your-32-char-secret-key"` |
 | 프론트엔드 빌드 실패 | `node_modules` 누락 | `cd frontend && npm install` |
-
-## 데모 계정
-
-| 항목 | 값 |
-|------|-----|
-| 이메일 | `demo@example.com` |
-| 비밀번호 | `password` |
-
-데모 계정에는 다음 샘플 데이터가 포함되어 있습니다.
-
-- 완료된 국내 여행: 부산 (2024.03.15 ~ 03.17), 서울 (2024.01.10 ~ 01.12)
-- 완료된 해외 여행: 오사카 (2024.05.10 ~ 05.14), 방콕 (2024.08.05 ~ 08.10)
-- 예정된 해외 여행: 파리 (2025.09.20 ~ 09.27)
-- 버킷리스트: 제주도, 방콕/치앙마이, 스위스 알프스 트레킹
-- 15개 이상의 지도 좌표 포함 타임라인, 체크리스트, 데모 사진 메타데이터
 
 ## 상세 가이드
 

@@ -1,7 +1,6 @@
 "use client";
 
 import L from "leaflet";
-import { MapPin } from "lucide-react";
 
 // export type는 "값"이 아니라 "타입"만 외부로 내보냅니다.
 // 마커 상태를 가능한 문자열 몇 개로 제한하는 유니온 타입입니다.

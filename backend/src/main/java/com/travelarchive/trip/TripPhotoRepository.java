@@ -20,6 +20,14 @@ public interface TripPhotoRepository extends JpaRepository<TripPhoto, Long> {
 
     List<TripPhoto> findAllByTimelineItemIdInAndOwnerTypeOrderByTimelineItemIdAscSortOrderAscIdAsc(List<Long> timelineItemIds, PhotoOwnerType ownerType);
 
+    List<TripPhoto> findAllByTimelineItemId(Long timelineItemId);
+
+    List<TripPhoto> findAllByTripId(Long tripId);
+
+    long deleteByTimelineItemId(Long timelineItemId);
+
+    long deleteByTripId(Long tripId);
+
     @Query("""
             select photo from TripPhoto photo
             join fetch photo.trip trip

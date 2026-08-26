@@ -17,7 +17,33 @@ describe('ApiClient', () => {
   });
 
   afterEach(() => {
+    document.cookie = 'XSRF-TOKEN=; Max-Age=0; Path=/';
     vi.unstubAllGlobals();
+  });
+
+  it('bootstraps CSRF and sends its header for login', async () => {
+    vi.mocked(fetch)
+      .mockImplementationOnce(async () => {
+        document.cookie = 'XSRF-TOKEN=csrf-token; Path=/';
+        return new Response(JSON.stringify({ data: {}, message: 'Success' }), { status: 200 });
+      })
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ data: {}, message: 'Success' }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
+
+    await new ApiClient('/api').post('/auth/login', {
+      email: 'traveler@example.com',
+      password: 'password123',
+    });
+
+    expect(fetch).toHaveBeenNthCalledWith(1, '/api/auth/csrf', expect.objectContaining({ method: 'GET' }));
+    expect(fetch).toHaveBeenNthCalledWith(2, '/api/auth/login', expect.objectContaining({
+      method: 'POST',
+      headers: expect.objectContaining({ 'X-XSRF-TOKEN': 'csrf-token' }),
+    }));
   });
 
   it('sends cookies with requests', async () => {

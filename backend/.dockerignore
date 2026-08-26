@@ -1,0 +1,9 @@
+.env*
+.gradle
+build
+bin
+.classpath
+.factorypath
+.project
+.settings
+storage

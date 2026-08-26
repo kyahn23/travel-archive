@@ -1,15 +1,20 @@
 package com.travelarchive.trip;
 
+import com.travelarchive.checklist.TravelChecklist;
+import com.travelarchive.checklist.TravelChecklistItemRepository;
+import com.travelarchive.checklist.TravelChecklistRepository;
 import com.travelarchive.common.enums.PhotoOwnerType;
 import com.travelarchive.common.enums.TravelScope;
 import com.travelarchive.common.enums.TripStatus;
 import com.travelarchive.map.Country;
+import com.travelarchive.map.CountryRepository;
 import com.travelarchive.map.DomesticRegion;
+import com.travelarchive.map.DomesticRegionRepository;
+import com.travelarchive.storage.TransactionalFileCleanup;
 import com.travelarchive.trip.dto.TripRequest;
 import com.travelarchive.trip.dto.TripResponse;
 import com.travelarchive.user.User;
 import com.travelarchive.user.UserRepository;
-import jakarta.persistence.EntityManager;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -25,16 +30,33 @@ public class TripService {
     private final TripRepository tripRepository;
     private final TripDayRepository tripDayRepository;
     private final TripPhotoRepository tripPhotoRepository;
+    private final TripTimelineItemRepository tripTimelineItemRepository;
+    private final TravelChecklistRepository checklistRepository;
+    private final TravelChecklistItemRepository checklistItemRepository;
+    private final CountryRepository countryRepository;
+    private final DomesticRegionRepository domesticRegionRepository;
+    private final TransactionalFileCleanup fileCleanup;
     private final UserRepository userRepository;
-    private final EntityManager entityManager;
 
     public TripService(TripRepository tripRepository, TripDayRepository tripDayRepository,
-                       TripPhotoRepository tripPhotoRepository, UserRepository userRepository, EntityManager entityManager) {
+                       TripPhotoRepository tripPhotoRepository,
+                       TripTimelineItemRepository tripTimelineItemRepository,
+                       TravelChecklistRepository checklistRepository,
+                       TravelChecklistItemRepository checklistItemRepository,
+                       CountryRepository countryRepository,
+                       DomesticRegionRepository domesticRegionRepository,
+                       TransactionalFileCleanup fileCleanup,
+                       UserRepository userRepository) {
         this.tripRepository = tripRepository;
         this.tripDayRepository = tripDayRepository;
         this.tripPhotoRepository = tripPhotoRepository;
+        this.tripTimelineItemRepository = tripTimelineItemRepository;
+        this.checklistRepository = checklistRepository;
+        this.checklistItemRepository = checklistItemRepository;
+        this.countryRepository = countryRepository;
+        this.domesticRegionRepository = domesticRegionRepository;
+        this.fileCleanup = fileCleanup;
         this.userRepository = userRepository;
-        this.entityManager = entityManager;
     }
 
     @Transactional(readOnly = true)
@@ -78,6 +100,10 @@ public class TripService {
         Trip trip = findOwnedTrip(id, user.getId());
         TripFields fields = mergeAndValidate(trip, request);
         boolean datesChanged = !trip.getStartDate().equals(fields.startDate()) || !trip.getEndDate().equals(fields.endDate());
+        if (datesChanged && tripTimelineItemRepository.existsByTripId(trip.getId())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Cannot change dates of a trip that already has timeline entries. Remove timeline items first.");
+        }
         trip.update(fields.title(), fields.travelScope(), fields.country(), fields.domesticRegion(), fields.cityName(),
                 fields.startDate(), fields.endDate(), fields.travelType(), fields.companion(), fields.summary());
         if (datesChanged) {
@@ -92,8 +118,44 @@ public class TripService {
     public void delete(String email, Long id) {
         User user = currentUser(email);
         Trip trip = findOwnedTrip(id, user.getId());
+
+        List<TripPhoto> ownedPhotos = tripPhotoRepository.findAllByTripId(trip.getId());
+        List<String> storageKeys = ownedPhotos.stream()
+                .map(TripPhoto::getStorageKey)
+                .filter(k -> k != null && !k.isBlank())
+                .toList();
+
+        List<TripDay> days = tripDayRepository.findAllByTripIdOrderByDayNo(trip.getId());
+        List<Long> dayIds = days.stream().map(TripDay::getId).toList();
+
+        List<TravelChecklist> checklists = checklistRepository.findAllByTripId(trip.getId());
+        List<Long> checklistIds = checklists.stream().map(TravelChecklist::getId).toList();
+
+        tripPhotoRepository.deleteByTripId(trip.getId());
+        tripPhotoRepository.flush();
+
+        if (!dayIds.isEmpty()) {
+            tripTimelineItemRepository.deleteByTripDayIdIn(dayIds);
+            tripTimelineItemRepository.flush();
+        }
+
+        if (!checklistIds.isEmpty()) {
+            checklistItemRepository.deleteByChecklistIdIn(checklistIds);
+            checklistItemRepository.flush();
+        }
+
         tripDayRepository.deleteByTripId(trip.getId());
+        tripDayRepository.flush();
+
+        if (!checklistIds.isEmpty()) {
+            checklistRepository.deleteByTripId(trip.getId());
+            checklistRepository.flush();
+        }
+
         tripRepository.delete(trip);
+        tripRepository.flush();
+
+        fileCleanup.registerAfterCommit(storageKeys);
     }
 
     @Transactional
@@ -168,12 +230,14 @@ public class TripService {
             if (countryId == null || domesticRegionId != null) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "International trips require countryId only");
             }
-            country = entityManager.getReference(Country.class, countryId);
+            country = countryRepository.findById(countryId)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown country: " + countryId));
         } else if (travelScope == TravelScope.DOMESTIC) {
             if (domesticRegionId == null || countryId != null) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Domestic trips require domesticRegionId only");
             }
-            domesticRegion = entityManager.getReference(DomesticRegion.class, domesticRegionId);
+            domesticRegion = domesticRegionRepository.findById(domesticRegionId)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown domestic region: " + domesticRegionId));
         } else {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "travelScope is required");
         }

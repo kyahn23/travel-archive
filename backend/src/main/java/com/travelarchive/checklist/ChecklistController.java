@@ -2,6 +2,9 @@ package com.travelarchive.checklist;
 
 import com.travelarchive.checklist.ChecklistService.ChecklistResponse;
 import com.travelarchive.common.dto.ApiResponse;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -41,7 +44,7 @@ public class ChecklistController {
     public ResponseEntity<ApiResponse<ChecklistService.ChecklistItemResponse>> createItem(
             Authentication authentication,
             @PathVariable Long checklistId,
-            @RequestBody CreateItemRequest request) {
+            @Valid @RequestBody CreateItemRequest request) {
         return ResponseEntity.status(201)
                 .body(new ApiResponse<>(checklistService.createCustomItem(authentication.getName(), checklistId, request.content(), request.category()), "Success"));
     }
@@ -52,6 +55,7 @@ public class ChecklistController {
         return new ApiResponse<>(null, "Success");
     }
 
-    public record CreateItemRequest(String content, String category) {
+    public record CreateItemRequest(@NotBlank @Size(max = 300) String content,
+                                     @NotBlank @Size(max = 80) String category) {
     }
 }

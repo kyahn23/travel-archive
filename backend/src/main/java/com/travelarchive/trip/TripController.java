@@ -3,6 +3,7 @@ package com.travelarchive.trip;
 import com.travelarchive.common.dto.ApiResponse;
 import com.travelarchive.trip.dto.TripRequest;
 import com.travelarchive.trip.dto.TripResponse;
+import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -30,7 +31,8 @@ public class TripController {
     }
 
     @PostMapping
-    public ResponseEntity<ApiResponse<TripResponse>> create(Authentication authentication, @RequestBody TripRequest request) {
+    public ResponseEntity<ApiResponse<TripResponse>> create(Authentication authentication,
+                                                            @Valid @RequestBody TripRequest request) {
         return ResponseEntity.status(201).body(new ApiResponse<>(tripService.create(authentication.getName(), request), "Success"));
     }
 
@@ -40,7 +42,8 @@ public class TripController {
     }
 
     @PatchMapping("/{id}")
-    public ApiResponse<TripResponse> update(Authentication authentication, @PathVariable Long id, @RequestBody TripRequest request) {
+    public ApiResponse<TripResponse> update(Authentication authentication, @PathVariable Long id,
+                                            @Valid @RequestBody TripRequest request) {
         return new ApiResponse<>(tripService.update(authentication.getName(), id, request), "Success");
     }
 
@@ -51,7 +54,8 @@ public class TripController {
     }
 
     @PatchMapping("/{id}/status")
-    public ApiResponse<TripResponse> changeStatus(Authentication authentication, @PathVariable Long id, @RequestBody TripRequest request) {
+    public ApiResponse<TripResponse> changeStatus(Authentication authentication, @PathVariable Long id,
+                                                  @Valid @RequestBody TripRequest request) {
         return new ApiResponse<>(tripService.changeStatus(authentication.getName(), id, request), "Success");
     }
 }

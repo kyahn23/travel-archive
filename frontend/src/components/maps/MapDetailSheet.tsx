@@ -116,9 +116,6 @@ export function MapDetailSheet({ data, open, onClose, onTripClick }: MapDetailSh
   // data가 없거나 열려 있지 않으면 아무것도 렌더링하지 않습니다.
   if (!data || !open) return null;
 
-  // window 접근 전 typeof 체크를 해 SSR/빌드 환경에서 오류를 막습니다.
-  const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
-
   return (
     <>
       {/* Mobile bottom sheet */}
@@ -137,6 +134,9 @@ export function MapDetailSheet({ data, open, onClose, onTripClick }: MapDetailSh
         />
         <div
           ref={sheetRef}
+          role="dialog"
+          aria-modal="true"
+          aria-label={`${data.name} 상세`}
           className={cn(
             "absolute inset-x-0 bottom-0 rounded-t-2xl bg-white p-5 pb-safe-bottom shadow-card transition-transform duration-300",
             open ? "translate-y-0" : "translate-y-full"
@@ -162,8 +162,14 @@ export function MapDetailSheet({ data, open, onClose, onTripClick }: MapDetailSh
                 )}
               </div>
             </div>
-            <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2" onClick={onClose}>
-              <X className="h-4 w-4" />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 -mr-2"
+              aria-label="상세 닫기"
+              onClick={onClose}
+            >
+              <X className="h-4 w-4" aria-hidden="true" />
             </Button>
           </div>
 

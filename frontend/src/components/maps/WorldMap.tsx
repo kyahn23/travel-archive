@@ -102,7 +102,9 @@ export function WorldMap({ data, className, onTripClick }: WorldMapProps) {
   );
 
   // 함수 매개변수 geo의 타입도 직접 선언해서, 어떤 필드가 있는지 TypeScript가 검사하게 합니다.
-  function handleGeoClick(geo: { properties?: Record<string, any> | null }) {
+  function handleGeoClick(geo: {
+    properties?: { ISO_A3?: string; ISO_A2?: string; id?: string; name?: string } | null;
+  }) {
     // ?? 는 왼쪽 값이 null/undefined일 때만 오른쪽 기본값을 쓰는 연산자입니다.
     const geoId = geo.properties?.ISO_A3 ?? geo.properties?.ISO_A2 ?? geo.properties?.id ?? "";
     const found = dataMap().get(geoId);
@@ -176,4 +178,3 @@ export function WorldMap({ data, className, onTripClick }: WorldMapProps) {
     </div>
   );
 }
-

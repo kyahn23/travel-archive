@@ -55,6 +55,7 @@ export function ChecklistView({ tripId }: ChecklistViewProps) {
   // useCallback은 "함수를 다시 만들지 않도록 메모이즈"할 때 쓰는 React 훅입니다.
   // 뒤의 [tripId]는 이 값이 바뀔 때만 함수를 다시 생성하라는 의존성 배열입니다.
   const fetchChecklist = useCallback(async () => {
+    setError("");
     try {
       const res = await api.get<ChecklistResponse>(`/trips/${tripId}/checklists`);
       setChecklist(res.data);

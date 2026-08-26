@@ -9,7 +9,9 @@ import com.travelarchive.checklist.TravelChecklistTemplateItem;
 import com.travelarchive.common.enums.BucketStatus;
 import com.travelarchive.common.enums.TravelScope;
 import com.travelarchive.map.Country;
+import com.travelarchive.map.CountryRepository;
 import com.travelarchive.map.DomesticRegion;
+import com.travelarchive.map.DomesticRegionRepository;
 import com.travelarchive.trip.Trip;
 import com.travelarchive.trip.TripDay;
 import com.travelarchive.trip.TripDayRepository;
@@ -32,15 +34,20 @@ public class BucketPlaceService {
     private final TripRepository tripRepository;
     private final TripDayRepository tripDayRepository;
     private final UserRepository userRepository;
+    private final CountryRepository countryRepository;
+    private final DomesticRegionRepository domesticRegionRepository;
     private final EntityManager entityManager;
 
     public BucketPlaceService(BucketPlaceRepository bucketPlaceRepository, TripRepository tripRepository,
                               TripDayRepository tripDayRepository, UserRepository userRepository,
+                              CountryRepository countryRepository, DomesticRegionRepository domesticRegionRepository,
                               EntityManager entityManager) {
         this.bucketPlaceRepository = bucketPlaceRepository;
         this.tripRepository = tripRepository;
         this.tripDayRepository = tripDayRepository;
         this.userRepository = userRepository;
+        this.countryRepository = countryRepository;
+        this.domesticRegionRepository = domesticRegionRepository;
         this.entityManager = entityManager;
     }
 
@@ -165,12 +172,14 @@ public class BucketPlaceService {
             if (countryId == null || domesticRegionId != null) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "International buckets require countryId only");
             }
-            country = entityManager.getReference(Country.class, countryId);
+            country = countryRepository.findById(countryId)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown country: " + countryId));
         } else if (travelScope == TravelScope.DOMESTIC) {
             if (domesticRegionId == null || countryId != null) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Domestic buckets require domesticRegionId only");
             }
-            domesticRegion = entityManager.getReference(DomesticRegion.class, domesticRegionId);
+            domesticRegion = domesticRegionRepository.findById(domesticRegionId)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown domestic region: " + domesticRegionId));
         } else {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "travelScope is required");
         }

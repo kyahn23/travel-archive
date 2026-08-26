@@ -1,5 +1,7 @@
 # CommandLineRunner - Spring Boot 초기화 가이드
 
+> **역사적 참고 문서 (2026-08-18)**: 이 문서가 설명하는 `SeedDataLoader`는 현재 작업 트리에서 삭제됐다. 현재 기준 데이터는 Flyway `V3__reference_data.sql`이 담당한다. DB 작업에는 이 문서를 사용하지 말고 `docs/README.md`를 따른다.
+
 > Spring Boot 애플리케이션이 완전히 기동된 직후, 자동으로 실행되는 초기화 로직을 구현하는 방법을 설명합니다.
 
 ---

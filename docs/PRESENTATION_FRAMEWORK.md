@@ -1,5 +1,7 @@
 # Travel Archive 프레임워크 구성 발표 자료
 
+> **발표용 역사 문서**: 실제 DB/Compose/배포 명령의 기준이 아니다. 현재 운영 상태는 `docs/README.md`를 따른다.
+
 
 ---
 

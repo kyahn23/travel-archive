@@ -9,3 +9,12 @@
  * - JavaScript만 알면 "테스트 헬퍼를 등록하는 초기화 코드"로 이해하면 됩니다.
  */
 import '@testing-library/jest-dom';
+
+if (typeof HTMLDialogElement !== 'undefined' && !HTMLDialogElement.prototype.showModal) {
+  HTMLDialogElement.prototype.showModal = function showModal() {
+    this.setAttribute('open', '');
+  };
+  HTMLDialogElement.prototype.close = function close() {
+    this.removeAttribute('open');
+  };
+}

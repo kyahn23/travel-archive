@@ -3,32 +3,24 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { X, Upload, Loader2, AlertCircle } from "lucide-react";
+import { api, ApiError } from "@/lib/api/client";
 
-// 파일 크기 제한은 바이트 단위 숫자 상수입니다.
 const MAX_SIZE = 5 * 1024 * 1024;
-// MIME type 문자열 배열로, 허용할 파일 형식을 제한합니다.
 const ACCEPTED = ["image/jpeg", "image/png", "image/webp"];
 
-/**
- * 사진 업로더가 받는 props 타입입니다.
- */
 interface PhotoUploaderProps {
   timelineItemId: number;
   onUploaded: () => void;
   onCancel: () => void;
 }
 
-/**
- * 타임라인 항목에 이미지를 첨부하는 업로드 컴포넌트입니다.
- */
 export function PhotoUploader({ timelineItemId, onUploaded, onCancel }: PhotoUploaderProps) {
-  const [file, setFile] = useState<File | null>(null); // File 타입은 브라우저가 제공하는 파일 객체입니다.
-  const [preview, setPreview] = useState<string | null>(null); // 미리보기 URL 문자열 또는 없음(null) 상태입니다.
+  const [file, setFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null); // HTMLInputElement DOM 요소를 직접 참조할 때 사용합니다.
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  // React.ChangeEvent<HTMLInputElement>는 "파일 입력창에서 발생한 change 이벤트" 타입입니다.
   function handleSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
     if (!f) return;
@@ -56,7 +48,6 @@ export function PhotoUploader({ timelineItemId, onUploaded, onCancel }: PhotoUpl
     if (inputRef.current) inputRef.current.value = "";
   }
 
-  // preview가 바뀔 때마다 이전 object URL을 정리하는 효과입니다.
   useEffect(() => {
     return () => {
       if (preview) {
@@ -74,31 +65,35 @@ export function PhotoUploader({ timelineItemId, onUploaded, onCancel }: PhotoUpl
     formData.append("file", file);
 
     try {
-      const res = await fetch(`/api/timeline-items/${timelineItemId}/photos`, {
-        method: "POST",
-        credentials: "include",
-        body: formData,
-      });
-
-      if (!res.ok) {
-        const text = await res.text().catch(() => "업로드 실패");
-        throw new Error(text);
-      }
-
+      await api.upload(`/timeline-items/${timelineItemId}/photos`, formData);
       onUploaded();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "업로드에 실패했습니다.");
+      if (err instanceof ApiError) {
+        setError(err.body || "업로드에 실패했습니다.");
+      } else {
+        setError("업로드에 실패했습니다.");
+      }
     } finally {
       setUploading(false);
     }
   }
 
   return (
-    <div className="rounded-xl bg-card border p-5 space-y-4">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="photo-uploader-title"
+      className="rounded-xl bg-card border p-5 space-y-4"
+    >
       <div className="flex items-center justify-between">
-        <h4 className="text-title font-semibold">사진 업로드</h4>
-        <button onClick={onCancel} className="rounded-md p-1 hover:bg-muted">
-          <X className="h-4 w-4" />
+        <h4 className="text-title font-semibold" id="photo-uploader-title">사진 업로드</h4>
+        <button
+          type="button"
+          aria-label="업로드 취소"
+          onClick={onCancel}
+          className="rounded-md p-1 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <X className="h-4 w-4" aria-hidden="true" />
         </button>
       </div>
 
@@ -123,6 +118,8 @@ export function PhotoUploader({ timelineItemId, onUploaded, onCancel }: PhotoUpl
         <div className="space-y-3">
           <div className="relative rounded-xl overflow-hidden bg-muted">
             {preview && (
+              // Blob URLs cannot be optimized by next/image.
+              // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={preview}
                 alt="미리보기"
@@ -130,10 +127,12 @@ export function PhotoUploader({ timelineItemId, onUploaded, onCancel }: PhotoUpl
               />
             )}
             <button
+              type="button"
+              aria-label="선택한 사진 제거"
               onClick={clearFile}
-              className="absolute top-2 right-2 rounded-full bg-black/50 p-1 text-white hover:bg-black/70"
+              className="absolute top-2 right-2 rounded-full bg-black/50 p-1 text-white hover:bg-black/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              <X className="h-4 w-4" />
+              <X className="h-4 w-4" aria-hidden="true" />
             </button>
           </div>
           <p className="text-caption text-muted-foreground truncate">

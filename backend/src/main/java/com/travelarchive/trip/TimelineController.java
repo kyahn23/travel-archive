@@ -3,6 +3,7 @@ package com.travelarchive.trip;
 import com.travelarchive.common.dto.ApiResponse;
 import com.travelarchive.trip.dto.TimelineItemRequest;
 import com.travelarchive.trip.dto.TimelineItemResponse;
+import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -31,13 +32,13 @@ public class TimelineController {
 
     @PostMapping("/trips/{tripId}/timeline-items")
     public ResponseEntity<ApiResponse<TimelineItemResponse>> create(Authentication authentication, @PathVariable Long tripId,
-                                                                    @RequestBody TimelineItemRequest request) {
+                                                                    @Valid @RequestBody TimelineItemRequest request) {
         return ResponseEntity.status(201).body(new ApiResponse<>(timelineService.create(authentication.getName(), tripId, request), "Success"));
     }
 
     @PatchMapping("/timeline-items/{id}")
     public ApiResponse<TimelineItemResponse> update(Authentication authentication, @PathVariable Long id,
-                                                    @RequestBody TimelineItemRequest request) {
+                                                    @Valid @RequestBody TimelineItemRequest request) {
         return new ApiResponse<>(timelineService.update(authentication.getName(), id, request), "Success");
     }
 
@@ -45,11 +46,5 @@ public class TimelineController {
     public ApiResponse<Void> delete(Authentication authentication, @PathVariable Long id) {
         timelineService.delete(authentication.getName(), id);
         return new ApiResponse<>(null, "Success");
-    }
-
-    @PostMapping("/timeline-items/{id}/photos")
-    public ResponseEntity<ApiResponse<TimelineItemResponse.PhotoResponse>> addPhoto(Authentication authentication, @PathVariable Long id,
-                                                                                    @RequestBody TimelineItemRequest.PhotoRequest request) {
-        return ResponseEntity.status(201).body(new ApiResponse<>(timelineService.addPhoto(authentication.getName(), id, request), "Success"));
     }
 }

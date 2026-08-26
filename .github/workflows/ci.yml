@@ -1,0 +1,95 @@
+name: Validate prod pull request
+
+on:
+  pull_request:
+    branches: [prod]
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: prod-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Backend tests with disposable PostgreSQL
+        run: bash backend/scripts/test-with-postgres.sh --evidence "$RUNNER_TEMP/backend.txt"
+      - name: Upload backend evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-evidence
+          path: ${{ runner.temp }}/backend.txt
+
+  frontend:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install
+        working-directory: frontend
+        run: npm ci --no-audit --no-fund
+      - name: Dependency audit
+        working-directory: frontend
+        run: npm audit --audit-level=high
+      - name: Lint
+        working-directory: frontend
+        run: npm run lint
+      - name: Typecheck
+        working-directory: frontend
+        run: npm run typecheck
+      - name: Test
+        working-directory: frontend
+        run: npm test
+      - name: Build
+        working-directory: frontend
+        env:
+          API_ORIGIN: http://travel-archive-backend:8080
+        run: npm run build
+
+  release-config:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Compose and shell scripts
+        env:
+          DB_PASSWORD: ci-only-db-password
+          POSTGRES_ADMIN_PASSWORD: ci-only-admin-password
+          JWT_SECRET: ci-only-jwt-secret-at-least-32-characters
+          APP_VERSION: ci-${{ github.sha }}
+          TA_SMOKE_PORT: 39001
+          TA_SMOKE_RUN_ID: compose-config
+        run: |
+          docker compose -f docker-compose.infrastructure.yml config --quiet
+          docker compose -f docker-compose.yml config --quiet
+          docker compose -f docker-compose.smoke.yml config --quiet
+          find scripts backend/scripts frontend/scripts init -type f -name '*.sh' -exec bash -n {} +
+
+  integration-smoke:
+    if: github.event.pull_request.draft == false
+    needs: [backend, frontend, release-config]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Full-stack smoke
+        env:
+          EVIDENCE: ${{ runner.temp }}/smoke.txt
+        run: bash scripts/smoke.sh
+      - name: Upload smoke evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-evidence
+          path: ${{ runner.temp }}/smoke.txt
