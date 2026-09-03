@@ -70,7 +70,7 @@ jobs:
             printf 'DB_PASSWORD=%s\n' "$DB_PASSWORD"
             printf 'JWT_SECRET=%s\n' "$JWT_SECRET"
             printf 'POSTGRES_PORT=5432\n'
-            printf 'FRONTEND_PORT=3000\n'
+            printf 'FRONTEND_PORT=3002\n'
           } > "$ENV_FILE"
           rsync -az "$ENV_FILE" "$SERVER_HOST":~/travel-archive/.env.app.next
           ssh "$SERVER_HOST" 'chmod 600 ~/travel-archive/.env.app.next && mv ~/travel-archive/.env.app.next ~/travel-archive/.env.app'
