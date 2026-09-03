@@ -1,9 +1,8 @@
-name: Deploy merged prod pull request
+name: Deploy prod branch
 
 on:
-  pull_request:
+  push:
     branches: [prod]
-    types: [closed]
 
 concurrency:
   group: travel-archive-production
@@ -14,17 +13,16 @@ permissions:
 
 jobs:
   deploy:
-    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     environment: production
     env:
-      APP_VERSION: ${{ github.event.pull_request.merge_commit_sha }}
+      APP_VERSION: ${{ github.sha }}
       SERVER_HOST: ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}
     steps:
       - name: Checkout merged revision
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          ref: ${{ github.sha }}
 
       - name: Verify merged revision
         run: test "$(git rev-parse HEAD)" = "$APP_VERSION"
