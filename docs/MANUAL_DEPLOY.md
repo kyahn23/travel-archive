@@ -18,7 +18,7 @@
 ## 수동 폴백 흐름
 
 ```bash
-ssh n100-home
+ssh your-n100-alias
 cd ~/travel-archive
 
 git status --short

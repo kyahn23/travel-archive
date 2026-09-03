@@ -22,7 +22,7 @@ jobs:
       SERVER_HOST: ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}
     steps:
       - name: Checkout merged revision
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ github.event.pull_request.merge_commit_sha }}
 
@@ -30,7 +30,7 @@ jobs:
         run: test "$(git rev-parse HEAD)" = "$APP_VERSION"
 
       - name: Setup SSH key
-        uses: webfactory/ssh-agent@v0.9.0
+        uses: webfactory/ssh-agent@dc588b651fe13675774614f8e6a936a468676387 # v0.9.0
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 

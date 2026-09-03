@@ -13,6 +13,7 @@
 
 set -eEuo pipefail
 
+SOURCE_ROOT="$(git rev-parse --show-toplevel)"
 EVIDENCE="${ATTEMPT_DIR:-$(mktemp -d /private/tmp/ta-clean-verify.XXXXXX)}/clean-copy.txt"
 mkdir -p "$(dirname "$EVIDENCE")"
 : > "$EVIDENCE"
@@ -29,7 +30,7 @@ trap 'rc=$?; log "cleanup clean_root=${CLEAN_ROOT}"; cd / 2>/dev/null; rm -rf "$
 log "== verify-clean-copy.sh =="
 log "evidence=${EVIDENCE}"
 
-if [[ "${CLEAN_ROOT}" == "/" || "${CLEAN_ROOT}" == "${HOME}" || "${CLEAN_ROOT}" == "/Users/kyahn/project/travel-archive" ]]; then
+if [[ "${CLEAN_ROOT}" == "/" || "${CLEAN_ROOT}" == "${HOME}" || "${CLEAN_ROOT}" == "${SOURCE_ROOT}" ]]; then
   log "ERROR: forbidden target: ${CLEAN_ROOT}"
   exit 64
 fi
@@ -37,6 +38,8 @@ fi
 log "phase=byte copy"
 rsync -a \
   --include='.env.example' \
+  --include='backend/.env.sample' \
+  --include='frontend/.env.sample' \
   --exclude='.env*' \
   --exclude='.git' \
   --exclude='.omo' \
@@ -49,7 +52,7 @@ rsync -a \
   --exclude='.factorypath' \
   --exclude='.project' \
   --exclude='.settings' \
-  "/Users/kyahn/project/travel-archive/" "${CLEAN_ROOT}/"
+  "${SOURCE_ROOT}/" "${CLEAN_ROOT}/"
 
 cd "${CLEAN_ROOT}" || { log "ERROR: cd ${CLEAN_ROOT} failed"; exit 66; }
 
