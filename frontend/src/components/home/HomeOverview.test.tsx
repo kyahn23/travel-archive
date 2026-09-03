@@ -5,9 +5,9 @@ import { HomeOverview } from "./HomeOverview";
 // next/dynamic must be mocked so dynamic imports resolve in jsdom
 vi.mock("next/dynamic", () => ({
   __esModule: true,
-  default: (loader: () => Promise<{ default: React.ComponentType }>) => {
+  default: () => {
     // Return a simple placeholder component; jsdom has no SVG/Leaflet
-    function DynamicPlaceholder(props: Record<string, unknown>) {
+    function DynamicPlaceholder() {
       return <div data-testid="dynamic-map">map-placeholder</div>;
     }
     DynamicPlaceholder.displayName = "DynamicMap";

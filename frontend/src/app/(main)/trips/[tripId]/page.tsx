@@ -170,18 +170,9 @@ function CoverImageSection({ tripId, coverPhotoId, onCoverUploaded }: { tripId: 
     formData.append("file", f);
 
     try {
-      const res = await fetch(`/api/trips/${tripId}/cover-image`, {
-        method: "POST",
-        credentials: "include",
-        body: formData,
-      });
-      if (!res.ok) {
-        const text = await res.text().catch(() => "업로드 실패");
-        throw new Error(text);
-      }
+      await api.upload(`/trips/${tripId}/cover-image`, formData);
       onCoverUploaded();
     } catch (err) {
-      // instanceof Error로 분기해 문자열/unknown 에러를 안전하게 처리합니다.
       setError(err instanceof Error ? err.message : "업로드에 실패했습니다.");
     } finally {
       setUploading(false);
@@ -192,6 +183,8 @@ function CoverImageSection({ tripId, coverPhotoId, onCoverUploaded }: { tripId: 
     <div className="rounded-xl bg-card border overflow-hidden mb-4">
       {coverPhotoId ? (
         <div className="relative group">
+          {/* Authenticated file responses are not compatible with Next image optimization. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={`/api/files/${coverPhotoId}`}
             alt="대표 이미지"
@@ -240,10 +233,8 @@ export default function TripDetailPage() {
   const { loading: authLoading } = useRequireAuth();
   const router = useRouter();
   const params = useParams();
-  if (!params) return null;
   // URL 파라미터는 문자열/문자열 배열 등으로 들어올 수 있어 Number()로 숫자화합니다.
-  // 위에서 null 가드를 했기 때문에 이제 params는 존재한다고 보고 직접 읽을 수 있습니다.
-  const tripId = Number(params.tripId);
+  const tripId = Number(params?.tripId);
 
   // Trip | null은 아직 데이터가 없을 수 있다는 상태를 표현합니다.
   const [trip, setTrip] = useState<Trip | null>(null);
@@ -270,6 +261,8 @@ export default function TripDetailPage() {
   useEffect(() => {
     if (!authLoading && !isNaN(tripId)) fetchTrip();
   }, [authLoading, tripId, fetchTrip]);
+
+  if (!params) return null;
 
   /**
    * 여행 상태를 서버에 반영하는 비동기 함수입니다.

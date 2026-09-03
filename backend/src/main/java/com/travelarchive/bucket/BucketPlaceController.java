@@ -4,6 +4,7 @@ import com.travelarchive.bucket.dto.BucketPlaceRequest;
 import com.travelarchive.bucket.dto.BucketPlaceResponse;
 import com.travelarchive.common.dto.ApiResponse;
 import com.travelarchive.trip.dto.TripResponse;
+import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -31,7 +32,8 @@ public class BucketPlaceController {
     }
 
     @PostMapping
-    public ResponseEntity<ApiResponse<BucketPlaceResponse>> create(Authentication authentication, @RequestBody BucketPlaceRequest request) {
+    public ResponseEntity<ApiResponse<BucketPlaceResponse>> create(Authentication authentication,
+                                                                    @Valid @RequestBody BucketPlaceRequest request) {
         return ResponseEntity.status(201).body(new ApiResponse<>(bucketPlaceService.create(authentication.getName(), request), "Success"));
     }
 
@@ -41,7 +43,8 @@ public class BucketPlaceController {
     }
 
     @PatchMapping("/{id}")
-    public ApiResponse<BucketPlaceResponse> update(Authentication authentication, @PathVariable Long id, @RequestBody BucketPlaceRequest request) {
+    public ApiResponse<BucketPlaceResponse> update(Authentication authentication, @PathVariable Long id,
+                                                    @Valid @RequestBody BucketPlaceRequest request) {
         return new ApiResponse<>(bucketPlaceService.update(authentication.getName(), id, request), "Success");
     }
 
@@ -53,7 +56,7 @@ public class BucketPlaceController {
 
     @PostMapping("/{id}/convert-to-trip")
     public ResponseEntity<ApiResponse<TripResponse>> convertToTrip(Authentication authentication, @PathVariable Long id,
-                                                                    @RequestBody BucketPlaceRequest request) {
+                                                                    @Valid @RequestBody BucketPlaceRequest request) {
         return ResponseEntity.status(201).body(new ApiResponse<>(bucketPlaceService.convertToTrip(authentication.getName(), id, request), "Success"));
     }
 }

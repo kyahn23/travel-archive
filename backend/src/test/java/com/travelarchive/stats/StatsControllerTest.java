@@ -30,7 +30,6 @@ import org.springframework.test.web.servlet.MvcResult;
 @AutoConfigureMockMvc
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @TestPropertySource(properties = {
-        "spring.jpa.hibernate.ddl-auto=create",
         "jwt.secret=test-jwt-secret-for-stats-controller-test-1234567890"
 })
 class StatsControllerTest {
@@ -54,6 +53,7 @@ class StatsControllerTest {
 
     @BeforeEach
     void cleanDatabase() {
+        jdbcTemplate.execute("truncate table users restart identity cascade");
         tripDayRepository.deleteAll();
         tripRepository.deleteAll();
         refreshTokenRepository.deleteAll();

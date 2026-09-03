@@ -62,6 +62,8 @@ export function LeafletMap({
       map.remove();
       mapRef.current = null;
     };
+    // The map is initialized once; the effect below applies center/zoom updates.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {

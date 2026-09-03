@@ -11,6 +11,7 @@ import java.time.Instant;
 import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.UUID;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import org.springframework.beans.factory.annotation.Value;
@@ -60,6 +61,7 @@ public class JwtTokenProvider {
         claims.put("sub", user.getEmail());
         claims.put("uid", user.getId());
         claims.put("role", user.getRole());
+        claims.put("typ", "access");
         claims.put("iat", now.getEpochSecond());
         claims.put("exp", now.plus(ACCESS_TOKEN_TTL).getEpochSecond());
         return sign(claims);
@@ -71,9 +73,17 @@ public class JwtTokenProvider {
         claims.put("sub", user.getEmail());
         claims.put("uid", user.getId());
         claims.put("typ", "refresh");
+        claims.put("jti", UUID.randomUUID().toString());
         claims.put("iat", now.getEpochSecond());
         claims.put("exp", now.plus(REFRESH_TOKEN_TTL).getEpochSecond());
         return sign(claims);
+    }
+
+    public void validateAccessToken(String token) {
+        Object type = claims(token).get("typ");
+        if (!"access".equals(type)) {
+            throw new IllegalArgumentException("Invalid access token");
+        }
     }
 
     public String subject(String token) {

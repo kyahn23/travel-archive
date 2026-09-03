@@ -11,7 +11,7 @@ import {
   CardTitle,
   CardContent,
 } from "@/components/ui/card";
-import type { TravelScope, Bucket, CreateBucketPayload, BucketStatus } from "@/types/travel";
+import type { TravelScope, Bucket, CreateBucketPayload } from "@/types/travel";
 import { SCOPE_LABEL, COUNTRIES, DOMESTIC_REGIONS } from "@/types/travel";
 
 // 문자열 클래스 조합을 상수로 빼두면 JSX 안이 덜 복잡해집니다.
@@ -44,8 +44,6 @@ export function BucketForm({ onCreated, onCancel }: BucketFormProps) {
   const [cityName, setCityName] = useState("");
   const [companion, setCompanion] = useState("");
   const [referenceUrl, setReferenceUrl] = useState("");
-  // BucketStatus 타입으로 상태 문자열을 제한해 오타를 방지합니다.
-  const [status, setStatus] = useState<BucketStatus>("WANT_TO_GO");
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
 
@@ -56,6 +54,18 @@ export function BucketForm({ onCreated, onCancel }: BucketFormProps) {
 
     if (!title.trim()) {
       setError("제목을 입력해주세요.");
+      return;
+    }
+    if (!cityName.trim()) {
+      setError("도시명을 입력해주세요.");
+      return;
+    }
+    if (travelScope === "DOMESTIC" && !domesticRegionId) {
+      setError("국내 여행은 지역을 선택해주세요.");
+      return;
+    }
+    if (travelScope === "INTERNATIONAL" && !countryId) {
+      setError("해외 여행은 국가를 선택해주세요.");
       return;
     }
 
@@ -72,7 +82,7 @@ export function BucketForm({ onCreated, onCancel }: BucketFormProps) {
         cityName: cityName.trim() || undefined,
         referenceUrl: referenceUrl.trim() || undefined,
         companion: companion.trim() || undefined,
-        status,
+        status: "WANT_TO_GO",
       };
       // api.post<Bucket>(...)의 <Bucket>는 제네릭 타입 인자입니다.
       // "이 요청의 응답 data는 Bucket 타입이다"라고 TS에 알려줍니다.

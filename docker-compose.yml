@@ -1,23 +1,63 @@
-version: "3.8"
-
 services:
-  postgres:
-    image: postgres:16-alpine
-    container_name: travel-archive-db
+  backend:
+    build:
+      context: ./backend
+      args:
+        APP_VERSION: ${APP_VERSION:-local}
+    image: travel-archive-backend:${APP_VERSION:-local}
+    container_name: travel-archive-backend
     restart: unless-stopped
+    networks:
+      - travel-archive
+      - infrastructure
     environment:
-      POSTGRES_DB: travel_archive
-      POSTGRES_USER: travel_archive
-      POSTGRES_PASSWORD: travel_archive
-    ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      DB_URL: jdbc:postgresql://home-postgres:5432/travel_archive
+      DB_USERNAME: travel_archive
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      SERVER_PORT: 8080
+      SPRING_PROFILES_ACTIVE: prod
+      COOKIE_SECURE: "true"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - uploads:/app/storage/uploads
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U travel_archive -d travel_archive"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:8080/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        API_ORIGIN: http://travel-archive-backend:8080
+        APP_VERSION: ${APP_VERSION:-local}
+    image: travel-archive-frontend:${APP_VERSION:-local}
+    container_name: travel-archive-frontend
+    restart: unless-stopped
+    networks:
+      - travel-archive
+    environment:
+      API_ORIGIN: http://travel-archive-backend:8080
+    ports:
+      - "127.0.0.1:${FRONTEND_PORT:-3000}:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+networks:
+  travel-archive:
+    driver: bridge
+    name: travel-archive
+  infrastructure:
+    external: true
 
 volumes:
-  postgres_data:
+  uploads:

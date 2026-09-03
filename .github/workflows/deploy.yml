@@ -1,0 +1,87 @@
+name: Deploy merged prod pull request
+
+on:
+  pull_request:
+    branches: [prod]
+    types: [closed]
+
+concurrency:
+  group: travel-archive-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      APP_VERSION: ${{ github.event.pull_request.merge_commit_sha }}
+      SERVER_HOST: ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}
+    steps:
+      - name: Checkout merged revision
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+
+      - name: Verify merged revision
+        run: test "$(git rev-parse HEAD)" = "$APP_VERSION"
+
+      - name: Connect to N100 through Tailscale
+        uses: tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8 # v4
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+          ping: ${{ secrets.SERVER_HOST }}
+
+      - name: Setup SSH key
+        uses: webfactory/ssh-agent@dc588b651fe13675774614f8e6a936a468676387 # v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Pin server host key
+        env:
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+          ssh-keygen -F "${{ secrets.SERVER_HOST }}" >/dev/null
+
+      - name: Stage release files
+        run: |
+          rsync -az \
+            --exclude='.git' \
+            --exclude='.env*' \
+            --exclude='.omo' \
+            --exclude='.opencode' \
+            --exclude='.playwright-mcp' \
+            --exclude='node_modules' \
+            --exclude='backend/build' \
+            --exclude='backend/.gradle' \
+            --exclude='backend/bin' \
+            --exclude='frontend/.next' \
+            ./ "$SERVER_HOST":~/travel-archive/
+
+      - name: Install production environment
+        env:
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+        run: |
+          umask 077
+          ENV_FILE="$(mktemp)"
+          trap 'rm -f "$ENV_FILE"' EXIT
+          {
+            printf 'DB_PASSWORD=%s\n' "$DB_PASSWORD"
+            printf 'JWT_SECRET=%s\n' "$JWT_SECRET"
+            printf 'POSTGRES_PORT=5432\n'
+            printf 'FRONTEND_PORT=3002\n'
+          } > "$ENV_FILE"
+          rsync -az "$ENV_FILE" "$SERVER_HOST":~/travel-archive/.env.app.next
+          ssh "$SERVER_HOST" 'chmod 600 ~/travel-archive/.env.app.next && mv ~/travel-archive/.env.app.next ~/travel-archive/.env.app'
+
+      - name: Deploy immutable release
+        run: bash scripts/deploy.sh

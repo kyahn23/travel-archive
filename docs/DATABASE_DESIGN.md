@@ -1,5 +1,7 @@
 # Travel Archive 데이터베이스 설계
 
+> **설계 참고 (2026-08-18)**: 도메인/테이블 설명용 문서다. 현재 schema 적용 절차나 migration 이력의 권위 문서가 아니다. 실제 DB 작업은 `docs/README.md`와 `docs/N100_POSTGRES_FROM_LOCAL_DOCKER.md`를 따른다.
+
 > 이 문서는 **JPA Entity 기반**으로 실제 운영 중인 Travel Archive의 데이터베이스 구조를 정리한 학습용 문서입니다.  
 > 각 테이블의 컬럼, 제약조건, 관계, 그리고 실제 어떤 흐름에서 사용되는지를 설명합니다.
 
@@ -11,7 +13,7 @@
 |------|------|
 | DBMS | PostgreSQL 16 (개발/운영), H2 (로컬 dev/test) |
 | ORM | JPA (Hibernate) |
-| 스키마 관리 | JPA `ddl-auto` (dev: `update`, 운영: `validate`) |
+| 스키마 관리 | Flyway V1–V3, JPA `ddl-auto: validate` |
 | 공통 전략 | `BaseEntity` 상속으로 `created_at`/`updated_at` 자동 관리 |
 
 ---
@@ -426,14 +428,9 @@ trips SELECT (status='COMPLETED', 날짜 집계)
 
 ## 6. 스키마 관리
 
-JPA/Hibernate의 `ddl-auto` 설정으로 스키마를 관리합니다.
+Flyway가 `backend/src/main/resources/db/migration/` 아래의 versioned SQL을 관리합니다. V1은 13개 application table을 생성하고, V2는 지원하는 schema를 조정하며, V3는 참조 데이터를 입력합니다. 기본/dev 모두 Hibernate는 `ddl-auto: validate`로 스키마를 검증만 합니다.
 
-| 프로필 | `ddl-auto` | 설명 |
-|--------|-----------|------|
-| dev (로컬) | `update` | 엔티티 변경 시 스키마 자동 갱신 |
-| 기본 (운영) | `validate` | 엔티티와 DB 스키마 일치 여부만 검증 |
-
-> 참고: 현재 프로젝트는 Flyway 마이그레이션 파일 없이 JPA 기반 스키마 생성을 사용합니다. 향후 Flyway 도입 시 이 섹션을 업데이트하세요.
+`V1__baseline.sql`은 빈 DB에 적용되는 초기 versioned migration입니다. `baseline-on-migrate` 기본값은 `false`이므로 기존 non-empty schema를 자동 채택하지 않습니다. 참조 데이터는 `V3__reference_data.sql`이 담당하며 삭제된 `SeedDataLoader`는 실행되지 않습니다.
 
 ---
 

@@ -7,6 +7,15 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface TripTimelineItemRepository extends JpaRepository<TripTimelineItem, Long> {
+
+    @Query("""
+            select case when count(item.id) > 0 then true else false end
+              from TripTimelineItem item
+              join item.tripDay day
+              where day.trip.id = :tripId
+            """)
+    boolean existsByTripId(@Param("tripId") Long tripId);
+
     @Query("""
             select item from TripTimelineItem item
             join fetch item.tripDay day
@@ -26,4 +35,13 @@ public interface TripTimelineItemRepository extends JpaRepository<TripTimelineIt
             where item.id = :id and trip.user.id = :userId
             """)
     Optional<TripTimelineItem> findOwnedById(@Param("id") Long id, @Param("userId") Long userId);
+
+    @Query("""
+            select item from TripTimelineItem item
+            join fetch item.tripDay day
+            where day.trip.id = :tripId
+            """)
+    List<TripTimelineItem> findAllByTripId(@Param("tripId") Long tripId);
+
+    long deleteByTripDayIdIn(List<Long> tripDayIds);
 }

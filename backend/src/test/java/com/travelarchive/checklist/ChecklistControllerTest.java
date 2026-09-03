@@ -31,7 +31,6 @@ import org.springframework.test.web.servlet.MvcResult;
 @AutoConfigureMockMvc
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @TestPropertySource(properties = {
-        "spring.jpa.hibernate.ddl-auto=create",
         "jwt.secret=test-jwt-secret-for-checklist-controller-test-1234567890"
 })
 class ChecklistControllerTest {
@@ -61,6 +60,7 @@ class ChecklistControllerTest {
 
     @BeforeEach
     void cleanDatabase() {
+        jdbcTemplate.execute("truncate table users restart identity cascade");
         itemRepository.deleteAll();
         checklistRepository.deleteAll();
         tripDayRepository.deleteAll();

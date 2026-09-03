@@ -95,12 +95,13 @@ export function ChecklistItem({ item, onToggle, onDelete }: ChecklistItemProps) 
 
       <button
         type="button"
+        aria-label={`${item.content} 삭제`}
         onClick={handleDelete}
         disabled={deleting}
-        className="shrink-0 rounded-md p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
+        className="shrink-0 rounded-md p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-hover:opacity-100 group-focus-within:opacity-100"
       >
         {deleting ? (
-          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
         ) : (
           <Trash2 className="h-3.5 w-3.5" />
         )}

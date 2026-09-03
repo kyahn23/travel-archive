@@ -5,6 +5,7 @@ import com.travelarchive.common.dto.ApiResponse;
 import com.travelarchive.storage.StorageContext;
 import com.travelarchive.storage.StorageService;
 import com.travelarchive.storage.StoredFile;
+import com.travelarchive.storage.TransactionalFileCleanup;
 import com.travelarchive.trip.dto.TimelineItemResponse;
 import com.travelarchive.user.User;
 import com.travelarchive.user.UserRepository;
@@ -32,14 +33,17 @@ public class PhotoController {
     private static final long MAX_TIMELINE_PHOTOS = 3;
 
     private final StorageService storageService;
+    private final TransactionalFileCleanup fileCleanup;
     private final UserRepository userRepository;
     private final TripRepository tripRepository;
     private final TripTimelineItemRepository timelineItemRepository;
     private final TripPhotoRepository photoRepository;
 
-    public PhotoController(StorageService storageService, UserRepository userRepository, TripRepository tripRepository,
+    public PhotoController(StorageService storageService, TransactionalFileCleanup fileCleanup,
+                           UserRepository userRepository, TripRepository tripRepository,
                            TripTimelineItemRepository timelineItemRepository, TripPhotoRepository photoRepository) {
         this.storageService = storageService;
+        this.fileCleanup = fileCleanup;
         this.userRepository = userRepository;
         this.tripRepository = tripRepository;
         this.timelineItemRepository = timelineItemRepository;
@@ -58,7 +62,8 @@ public class PhotoController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Trip can have at most 1 cover image");
         }
         StoredFile storedFile = storageService.store(file, new StorageContext(user.getId(), trip.getId()));
-        TripPhoto photo = photoRepository.save(new TripPhoto(trip, null, PhotoOwnerType.TRIP_COVER,
+        fileCleanup.registerRollbackDelete(storedFile.storageKey());
+        TripPhoto photo = photoRepository.saveAndFlush(new TripPhoto(trip, null, PhotoOwnerType.TRIP_COVER,
                 storedFile.storageKey(), null, storedFile.originalFileName(), storedFile.contentType(),
                 storedFile.fileSize(), null, 0));
         return ResponseEntity.status(201).body(new ApiResponse<>(TimelineItemResponse.PhotoResponse.from(photo), "Success"));
@@ -78,7 +83,8 @@ public class PhotoController {
         }
         Trip trip = item.getTripDay().getTrip();
         StoredFile storedFile = storageService.store(file, new StorageContext(user.getId(), trip.getId()));
-        TripPhoto photo = photoRepository.save(new TripPhoto(trip, item, PhotoOwnerType.TIMELINE_ITEM,
+        fileCleanup.registerRollbackDelete(storedFile.storageKey());
+        TripPhoto photo = photoRepository.saveAndFlush(new TripPhoto(trip, item, PhotoOwnerType.TIMELINE_ITEM,
                 storedFile.storageKey(), null, storedFile.originalFileName(), storedFile.contentType(),
                 storedFile.fileSize(), null, (int) currentCount));
         return ResponseEntity.status(201).body(new ApiResponse<>(TimelineItemResponse.PhotoResponse.from(photo), "Success"));

@@ -8,12 +8,14 @@ import com.travelarchive.auth.dto.UserResponse;
 import com.travelarchive.common.dto.ApiResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.env.Environment;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -54,9 +56,18 @@ public class AuthController {
             return ResponseEntity.status(401).build();
         }
         IssuedTokens tokens = authService.refresh(refreshToken);
-        return ResponseEntity.ok()
+        ResponseEntity.BodyBuilder builder = ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, accessCookie(tokens.accessToken()).toString())
-                .body(new ApiResponse<>(new TokenResponse("Bearer", JwtTokenProvider.ACCESS_TOKEN_TTL.toSeconds()), "Success"));
+                .header(HttpHeaders.SET_COOKIE, refreshCookie(tokens.refreshToken()).toString())
+                .header(HttpHeaders.SET_COOKIE, clearXsrfCookie().toString());
+        return builder.body(new ApiResponse<>(new TokenResponse("Bearer", JwtTokenProvider.ACCESS_TOKEN_TTL.toSeconds()), "Success"));
+    }
+
+    @GetMapping("/csrf")
+    public ResponseEntity<ApiResponse<Map<String, String>>> csrf(CsrfToken csrfToken) {
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, xsrfHeaderCookie(csrfToken.getToken()).toString())
+                .body(new ApiResponse<>(Map.of("csrfToken", csrfToken.getToken(), "headerName", "X-XSRF-TOKEN"), "Success"));
     }
 
     @PostMapping("/logout")
@@ -106,6 +117,25 @@ public class AuthController {
                 .secure(secureCookies())
                 .sameSite("Strict")
                 .path(REFRESH_TOKEN_COOKIE.equals(name) ? "/api/auth" : "/")
+                .maxAge(0)
+                .build();
+    }
+
+    private ResponseCookie xsrfHeaderCookie(String token) {
+        return ResponseCookie.from("XSRF-TOKEN", token)
+                .httpOnly(false)
+                .secure(secureCookies())
+                .sameSite("Strict")
+                .path("/")
+                .build();
+    }
+
+    private ResponseCookie clearXsrfCookie() {
+        return ResponseCookie.from("XSRF-TOKEN", "")
+                .httpOnly(false)
+                .secure(secureCookies())
+                .sameSite("Strict")
+                .path("/")
                 .maxAge(0)
                 .build();
     }

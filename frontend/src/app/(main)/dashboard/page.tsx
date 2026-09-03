@@ -27,23 +27,17 @@ export default function DashboardPage() {
     try {
       const res = await api.get<WorldMapRegion[]>("/maps/world");
 
-      const detailPromises = res.data
-        .filter((r) => r.status !== "NONE")
+      const details = await Promise.all(res.data
+        .filter((region) => region.status !== "NONE")
         .map(async (region) => {
           try {
             const detail = await api.get<MapRegionDetail>(`/maps/regions/${region.mapKey}`);
-            return { mapKey: region.mapKey, detail: detail.data };
+            return [region.mapKey, detail.data] as const;
           } catch {
             return null;
           }
-        });
-
-      const details = await Promise.all(detailPromises);
-      const detailMap = new Map<string, MapRegionDetail>();
-      for (const d of details) {
-        if (d !== null) detailMap.set(d.mapKey, d.detail);
-      }
-
+        }));
+      const detailMap = new Map(details.filter((detail) => detail !== null));
       const enriched: CountryData[] = res.data.map((region) => {
         const detail = detailMap.get(region.mapKey);
         return {
@@ -52,15 +46,14 @@ export default function DashboardPage() {
           status: region.status,
           tripCount: detail?.completedCount ?? 0,
           bucketCount: detail?.bucketCount ?? 0,
-          recentTrips: detail?.trips?.slice(0, 5).map((t) => ({
-            id: t.id,
-            title: t.title,
-            startDate: t.startDate,
-            endDate: t.endDate,
+          recentTrips: detail?.trips?.slice(0, 5).map((trip) => ({
+            id: trip.id,
+            title: trip.title,
+            startDate: trip.startDate,
+            endDate: trip.endDate,
           })),
         };
       });
-
       setWorldData(enriched);
     } catch {
       setError("세계 지도 데이터를 불러오지 못했습니다.");
@@ -71,23 +64,17 @@ export default function DashboardPage() {
     try {
       const res = await api.get<DomesticMapRegion[]>("/maps/domestic");
 
-      const detailPromises = res.data
-        .filter((r) => r.status !== "NONE")
+      const details = await Promise.all(res.data
+        .filter((region) => region.status !== "NONE")
         .map(async (region) => {
           try {
             const detail = await api.get<MapRegionDetail>(`/maps/regions/${region.mapKey}`);
-            return { mapKey: region.mapKey, detail: detail.data };
+            return [region.mapKey, detail.data] as const;
           } catch {
             return null;
           }
-        });
-
-      const details = await Promise.all(detailPromises);
-      const detailMap = new Map<string, MapRegionDetail>();
-      for (const d of details) {
-        if (d !== null) detailMap.set(d.mapKey, d.detail);
-      }
-
+        }));
+      const detailMap = new Map(details.filter((detail) => detail !== null));
       const enriched: KoreaRegionData[] = res.data.map((region) => {
         const detail = detailMap.get(region.mapKey);
         return {
@@ -96,15 +83,14 @@ export default function DashboardPage() {
           status: region.status,
           tripCount: detail?.completedCount ?? 0,
           bucketCount: detail?.bucketCount ?? 0,
-          recentTrips: detail?.trips?.slice(0, 5).map((t) => ({
-            id: t.id,
-            title: t.title,
-            startDate: t.startDate,
-            endDate: t.endDate,
+          recentTrips: detail?.trips?.slice(0, 5).map((trip) => ({
+            id: trip.id,
+            title: trip.title,
+            startDate: trip.startDate,
+            endDate: trip.endDate,
           })),
         };
       });
-
       setDomesticData(enriched);
     } catch {
       setError("국내 지도 데이터를 불러오지 못했습니다.");

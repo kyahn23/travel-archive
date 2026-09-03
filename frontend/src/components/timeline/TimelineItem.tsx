@@ -128,18 +128,37 @@ export function TimelineItem({ item, onEdit, onDelete, onUploadPhoto }: Timeline
             </Badge>
           </div>
 
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onUploadPhoto(item.id)}>
-              <Camera className="h-3.5 w-3.5" />
+          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              aria-label={`${item.title} 사진 업로드`}
+              onClick={() => onUploadPhoto(item.id)}
+            >
+              <Camera className="h-3.5 w-3.5" aria-hidden="true" />
             </Button>
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onEdit(item)}>
-              <Edit3 className="h-3.5 w-3.5" />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              aria-label={`${item.title} 편집`}
+              onClick={() => onEdit(item)}
+            >
+              <Edit3 className="h-3.5 w-3.5" aria-hidden="true" />
             </Button>
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleDelete} disabled={deleting}>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              aria-label={`${item.title} 삭제`}
+              onClick={handleDelete}
+              disabled={deleting}
+            >
               {deleting ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
               ) : (
-                <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                <Trash2 className="h-3.5 w-3.5 text-destructive" aria-hidden="true" />
               )}
             </Button>
           </div>
@@ -166,6 +185,8 @@ export function TimelineItem({ item, onEdit, onDelete, onUploadPhoto }: Timeline
                 key={photo.id}
                 className="h-14 w-14 rounded-lg bg-muted overflow-hidden shrink-0"
               >
+                {/* Authenticated file responses are not compatible with Next image optimization. */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={`/api/files/${photo.id}`}
                   alt={photo.originalFileName}

@@ -97,17 +97,21 @@ export function HomeOverview({
           { label: "여행 일수", value: statsSummary?.travelDays ?? 0, icon: BarChart3, color: "text-violet-600", bg: "bg-violet-50" },
           { label: "방문 국가/지역", value: (statsSummary?.visitedCountries ?? 0) + (statsSummary?.visitedDomesticRegions ?? 0), icon: MapPin, color: "text-sand-400", bg: "bg-sand-50" },
         ].map(({ label, value, icon: Icon, color, bg }) => (
-          <Card key={label} className="cursor-pointer" onClick={onStatsClick}>
-            <CardContent className="flex items-center gap-3 p-4">
-              <div className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg ${bg}`}>
-                <Icon className={`h-4.5 w-4.5 ${color}`} />
-              </div>
-              <div className="min-w-0">
-                <p className="text-micro text-muted-foreground">{label}</p>
-                <p className="text-title font-bold tracking-tight">{value.toLocaleString()}</p>
-              </div>
-            </CardContent>
-          </Card>
+          <button
+            key={label}
+            type="button"
+            aria-label={`${label} ${value.toLocaleString()} - 여행 통계 보기`}
+            className="flex items-center gap-3 rounded-xl border bg-card p-4 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            onClick={onStatsClick}
+          >
+            <div className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg ${bg}`}>
+              <Icon className={`h-4.5 w-4.5 ${color}`} aria-hidden="true" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-micro text-muted-foreground">{label}</p>
+              <p className="text-title font-bold tracking-tight">{value.toLocaleString()}</p>
+            </div>
+          </button>
         ))}
       </section>
 

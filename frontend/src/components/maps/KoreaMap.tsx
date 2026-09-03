@@ -94,7 +94,7 @@ export function KoreaMap({ data, className, onTripClick }: KoreaMapProps) {
   );
 
   // geo 매개변수는 최소한 이 구조를 가진다고 타입으로 설명합니다.
-  function handleGeoClick(geo: { properties?: Record<string, any> | null }) {
+  function handleGeoClick(geo: { properties?: { code?: string; name?: string } | null }) {
     const code = geo.properties?.code ?? "";
     const found = dataMap().get(code);
 

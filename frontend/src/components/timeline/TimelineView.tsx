@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { api } from "@/lib/api/client";
-import { TimelineItem, DayGroup, TimelineItemData, TimelineCategory } from "./TimelineItem";
+import { TimelineItem, DayGroup, TimelineItemData } from "./TimelineItem";
 import { TimelineForm, TimelineFormPayload } from "./TimelineForm";
 import { PhotoUploader } from "@/components/photos/PhotoUploader";
 import { Button } from "@/components/ui/button";
@@ -39,10 +39,8 @@ export function TimelineView({ tripId }: TimelineViewProps) {
   } | null>(null); // 객체 또는 null 중 하나만 가질 수 있는 유니언 타입입니다.
 
   const [photoTarget, setPhotoTarget] = useState<number | null>(null); // 숫자 id 또는 선택 안 됨(null) 상태입니다.
-  const refreshRef = useRef<() => void>(() => {}); // "함수 참조"를 저장하는 ref입니다. () => void는 인자/반환이 없는 함수 타입입니다.
-
-  // useCallback은 같은 함수 객체를 계속 재사용하기 위한 React 훅입니다.
   const fetchTimeline = useCallback(async () => {
+    setError("");
     try {
       const res = await api.get<DayGroup[]>(`/trips/${tripId}/timeline`);
       setGroups(res.data);
@@ -57,28 +55,26 @@ export function TimelineView({ tripId }: TimelineViewProps) {
     fetchTimeline();
   }, [fetchTimeline]);
 
-  refreshRef.current = fetchTimeline;
-
   async function handleCreate(dayDate: string, payload: TimelineFormPayload) {
     await api.post(`/trips/${tripId}/timeline-items`, payload);
     setFormTarget(null);
-    await refreshRef.current();
+    await fetchTimeline();
   }
 
   async function handleUpdate(item: TimelineItemData, payload: TimelineFormPayload) {
     await api.patch(`/timeline-items/${item.id}`, payload);
     setFormTarget(null);
-    await refreshRef.current();
+    await fetchTimeline();
   }
 
   async function handleDelete(id: number) {
     await api.delete(`/timeline-items/${id}`);
-    await refreshRef.current();
+    await fetchTimeline();
   }
 
   async function handlePhotoUploaded() {
     setPhotoTarget(null);
-    await refreshRef.current();
+    await fetchTimeline();
   }
 
   if (loading) {
@@ -145,7 +141,6 @@ export function TimelineView({ tripId }: TimelineViewProps) {
 
           {formTarget?.dayDate === group.travelDate && (
             <TimelineForm
-              tripId={tripId}
               travelDate={group.travelDate}
               initialData={formTarget.editItem}
               onSubmit={(payload) =>

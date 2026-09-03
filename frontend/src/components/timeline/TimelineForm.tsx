@@ -23,7 +23,6 @@ const CATEGORIES: TimelineCategory[] = ["PLACE", "FOOD", "ACTIVITY", "MOVE", "ME
  * initialData가 선택적(?)인 이유는 수정 모드가 아니라 새로 추가하는 모드도 있기 때문입니다.
  */
 interface TimelineFormProps {
-  tripId: number;
   travelDate: string;
   initialData?: TimelineItemData;
   onSubmit: (data: TimelineFormPayload) => Promise<void>;
@@ -49,7 +48,7 @@ export interface TimelineFormPayload {
 /**
  * 타임라인 항목을 새로 만들거나 수정하는 폼 컴포넌트입니다.
  */
-export function TimelineForm({ tripId, travelDate, initialData, onSubmit, onCancel }: TimelineFormProps) {
+export function TimelineForm({ travelDate, initialData, onSubmit, onCancel }: TimelineFormProps) {
   const [title, setTitle] = useState(initialData?.title ?? ""); // ?? 는 왼쪽 값이 null/undefined일 때만 오른쪽 기본값을 씁니다.
   const [placeName, setPlaceName] = useState(initialData?.placeName ?? "");
   const [address, setAddress] = useState(initialData?.address ?? "");

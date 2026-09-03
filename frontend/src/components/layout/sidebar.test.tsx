@@ -5,7 +5,7 @@ import { Sidebar } from "./sidebar";
 const mockPathname = vi.fn(() => "/dashboard");
 
 vi.mock("next/navigation", () => ({
-  usePathname: (...args: unknown[]) => mockPathname(...args),
+  usePathname: () => mockPathname(),
 }));
 
 vi.mock("next/link", () => ({

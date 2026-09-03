@@ -31,7 +31,6 @@ import org.springframework.test.web.servlet.MvcResult;
 @AutoConfigureMockMvc
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @TestPropertySource(properties = {
-        "spring.jpa.hibernate.ddl-auto=create",
         "jwt.secret=test-jwt-secret-for-timeline-controller-test-1234567890"
 })
 class TimelineControllerTest {
@@ -61,6 +60,7 @@ class TimelineControllerTest {
 
     @BeforeEach
     void cleanDatabase() {
+        jdbcTemplate.execute("truncate table users restart identity cascade");
         photoRepository.deleteAll();
         timelineItemRepository.deleteAll();
         tripDayRepository.deleteAll();
@@ -118,7 +118,7 @@ class TimelineControllerTest {
         Long itemId = idFrom(createItem(traveler, tripId, "사진 장소", "2026-05-01T11:00:00", "PLACE")
                 .andReturn().getResponse().getContentAsString());
 
-        addPhoto(traveler, itemId, 0, 1024L).andExpect(status().isBadRequest());
+        addPhoto(traveler, itemId, 0, 1024L).andExpect(status().isUnsupportedMediaType());
 
         for (int i = 1; i <= 3; i++) {
             uploadPhoto(traveler, itemId, i)
@@ -127,7 +127,7 @@ class TimelineControllerTest {
         }
 
         uploadPhoto(traveler, itemId, 4).andExpect(status().isBadRequest());
-        addPhoto(traveler, itemId, 5, 5L * 1024 * 1024 + 1).andExpect(status().isBadRequest());
+        addPhoto(traveler, itemId, 5, 5L * 1024 * 1024 + 1).andExpect(status().isUnsupportedMediaType());
 
         mockMvc.perform(get("/api/trips/{tripId}/timeline", tripId).cookie(traveler))
                 .andExpect(status().isOk())

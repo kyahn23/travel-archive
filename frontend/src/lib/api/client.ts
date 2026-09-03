@@ -3,72 +3,100 @@
  *
  * - All requests go to `/api/*` which Next.js rewrites to the backend.
  * - Cookies (httpOnly) are sent automatically via `credentials: "include"`.
- * - 401 responses redirect to `/login`.
+ * - CSRF: unsafe requests bootstrap a missing XSRF-TOKEN cookie once, then
+ *   echo it as the X-XSRF-TOKEN header.
+ * - 401 from a protected request triggers a single shared refresh + CSRF
+ *   re-bootstrap + single replay. Auth endpoints and `/api/auth/csrf`
+ *   itself are excluded from the refresh self-recursion.
  */
 
-/** Standard backend envelope */
-// `ApiResponse<T>` 는 제네릭 인터페이스입니다.
-// `T` 는 "아직 정해지지 않은 응답 데이터 타입" 자리표시자입니다.
-// 그래서 같은 응답 포맷을 유지하면서 데이터 타입만 재사용할 수 있습니다.
+const CSRF_HEADER = "X-XSRF-TOKEN";
+const CSRF_COOKIE = "XSRF-TOKEN";
+
 export interface ApiResponse<T = unknown> {
-  data: T; // 응답 본문 데이터 타입은 호출 시점에 결정됩니다.
-  message: string; // 서버 메시지는 항상 문자열입니다.
+  data: T;
+  message: string;
 }
 
 export class ApiError extends Error {
   constructor(
-    public status: number, // `public` 은 생성자 매개변수를 클래스 프로퍼티로 자동 선언합니다.
-    public body: string, // 매개변수와 필드 선언을 동시에 하는 TypeScript 문법입니다.
+    public status: number,
+    public body: string,
   ) {
     super(`API ${status}: ${body}`);
     this.name = "ApiError";
   }
 }
 
-// `class` 에서도 타입 주석, 제네릭, 접근 제한자(public/private)를 함께 사용할 수 있습니다.
+function readCookie(name: string): string | null {
+  if (typeof document === "undefined") return null;
+  const target = `${name}=`;
+  for (const part of document.cookie.split(";")) {
+    const trimmed = part.trim();
+    if (trimmed.startsWith(target)) {
+      return decodeURIComponent(trimmed.substring(target.length));
+    }
+  }
+  return null;
+}
+
+const REFRESH_PATH = "/auth/refresh";
+const CSRF_PATH = "/auth/csrf";
+
+type UnsafeMethod = "POST" | "PUT" | "PATCH" | "DELETE";
+
+function isUnsafe(method?: string): method is UnsafeMethod {
+  return method === "POST" || method === "PUT" || method === "PATCH" || method === "DELETE";
+}
+
+function skipsRefreshRetry(path: string): boolean {
+  return path === REFRESH_PATH || path === CSRF_PATH || path === "/auth/login" || path === "/auth/signup" || path === "/auth/logout";
+}
+
+type BodyFactory = () => BodyInit | undefined;
+
+export interface RequestOptions extends Omit<RequestInit, "body"> {
+  body?: BodyInit | unknown | null;
+  bodyFactory?: BodyFactory;
+  redirectOnUnauthorized?: boolean;
+}
+
 export class ApiClient {
-  private baseUrl: string; // `private` 는 클래스 내부에서만 접근 가능하다는 뜻입니다.
+  private baseUrl: string;
+  private refreshPromise: Promise<boolean> | null = null;
 
   constructor(baseUrl = "/api") {
-    this.baseUrl = baseUrl; // 생성자 매개변수에는 타입을 생략했지만 기본값으로 문자열이 됩니다.
+    this.baseUrl = baseUrl;
   }
 
-  /** Low-level request — throws ApiError on non-2xx. */
   async request<T>(
-    path: string, // `: string` 은 경로가 문자열이어야 함을 명시합니다.
-    options: RequestInit = {}, // `RequestInit` 은 fetch 옵션 객체의 표준 타입입니다.
+    path: string,
+    options: RequestOptions = {},
     redirectOnUnauthorized = true,
   ): Promise<ApiResponse<T>> {
-    // `Promise<ApiResponse<T>>` 는 비동기 작업이 끝나면 `ApiResponse<T>` 를 반환한다는 뜻입니다.
-    // 여기서도 `T` 는 호출할 때 결정되는 제네릭 타입입니다.
     const url = `${this.baseUrl}${path}`;
-    // `Record<string, string>` 은 "문자열 키와 문자열 값"을 갖는 객체 타입입니다.
-    // 헤더 객체처럼 동적으로 key/value 를 담는 구조에 자주 사용합니다.
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-      // `as Record<string, string> | undefined` 는 타입 단언(type assertion)입니다.
-      // `options.headers` 가 표준 `HeadersInit` 의 다양한 형태를 가질 수 있어서,
-      // 여기서는 간단히 문자열 객체로 취급하겠다고 TypeScript에 알려줍니다.
-      ...(options.headers as Record<string, string> | undefined),
-    };
+    const method = (options.method ?? "GET").toUpperCase();
+    const unsafe = isUnsafe(method);
+    const skipRefresh = skipsRefreshRetry(path);
 
-    const res = await fetch(url, {
-      ...options,
-      headers,
-      credentials: "include",
-    });
+    if (unsafe && !readCookie(CSRF_COOKIE)) {
+      await this.bootstrapCsrf();
+    }
 
-    if (res.status === 401) {
-      // Don't redirect if already on an auth page to avoid loops
-      if (
-        redirectOnUnauthorized &&
-        typeof window !== "undefined" &&
-        !window.location.pathname.startsWith("/login") &&
-        !window.location.pathname.startsWith("/signup")
-      ) {
-        window.location.href = "/login";
+    const finalOptions = await this.buildOptions(options, unsafe);
+    let res = await fetch(url, finalOptions);
+
+    if (res.status === 401 && !skipRefresh) {
+      const refreshed = await this.singleRefresh();
+      if (refreshed) {
+        await this.bootstrapCsrf();
+        const replay = await this.buildOptions(options, unsafe);
+        res = await fetch(url, replay);
       }
-      throw new ApiError(401, "Unauthorized");
+      if (res.status === 401) {
+        this.maybeRedirect(redirectOnUnauthorized);
+        throw new ApiError(401, "Unauthorized");
+      }
     }
 
     if (!res.ok) {
@@ -77,18 +105,96 @@ export class ApiClient {
     }
 
     if (res.status === 204 || res.headers.get("content-length") === "0") {
-      // `as unknown as T` 는 "충분히 안전하다고 판단하는 임시 변환"입니다.
-      // 먼저 `unknown` 으로 바꾼 뒤 `T` 로 다시 단언하여,
-      // 빈 응답을 제네릭 결과 타입으로 맞춰 돌려줍니다.
       return { data: undefined as unknown as T, message: "Success" };
     }
 
-    // `res.json()` 의 결과는 런타임에서 정확한 제네릭을 알 수 없으므로,
-    // 반환값을 `Promise<ApiResponse<T>>` 로 단언해 사용합니다.
     return res.json() as Promise<ApiResponse<T>>;
   }
 
-  // 제네릭 메서드는 호출하는 쪽이 원하는 데이터 타입을 넣을 수 있게 해줍니다.
+  private async buildOptions(
+    options: RequestOptions,
+    unsafe: boolean,
+  ): Promise<RequestInit> {
+    const headers: Record<string, string> = {
+      ...(options.headers as Record<string, string> | undefined),
+    };
+    const method = (options.method ?? "GET").toUpperCase();
+    const isMultipart =
+      typeof FormData !== "undefined" && options.body instanceof FormData;
+
+    if (method !== "GET" && !isMultipart && headers["Content-Type"] == null) {
+      headers["Content-Type"] = "application/json";
+    }
+    if (unsafe) {
+      const token = readCookie(CSRF_COOKIE);
+      if (token) headers[CSRF_HEADER] = token;
+    }
+
+    let body: BodyInit | undefined;
+    if (options.bodyFactory) {
+      body = options.bodyFactory() ?? undefined;
+    } else if (options.body !== undefined && options.body !== null) {
+      if (options.body instanceof FormData || typeof options.body === "string" || options.body instanceof Blob) {
+        body = options.body as BodyInit;
+      } else {
+        body = JSON.stringify(options.body);
+      }
+    }
+
+    return {
+      method,
+      headers,
+      credentials: "include",
+      body,
+      ...Object.fromEntries(
+        Object.entries(options).filter(
+          ([k]) => !["headers", "method", "body", "bodyFactory", "credentials", "redirectOnUnauthorized"].includes(k),
+        ),
+      ),
+    };
+  }
+
+  private async bootstrapCsrf(): Promise<void> {
+    try {
+      await fetch(`${this.baseUrl}${CSRF_PATH}`, {
+        method: "GET",
+        credentials: "include",
+      });
+    } catch {
+      // missing cookie surfaces 403 to the caller
+    }
+  }
+
+  private async singleRefresh(): Promise<boolean> {
+    if (this.refreshPromise) return this.refreshPromise;
+    this.refreshPromise = (async () => {
+      try {
+        if (!readCookie(CSRF_COOKIE)) await this.bootstrapCsrf();
+        const csrfToken = readCookie(CSRF_COOKIE);
+        const res = await fetch(`${this.baseUrl}${REFRESH_PATH}`, {
+          method: "POST",
+          credentials: "include",
+          headers: csrfToken ? { [CSRF_HEADER]: csrfToken } : undefined,
+        });
+        return res.ok;
+      } catch {
+        return false;
+      } finally {
+        this.refreshPromise = null;
+      }
+    })();
+    return this.refreshPromise;
+  }
+
+  private maybeRedirect(enabled: boolean): void {
+    if (!enabled || typeof window === "undefined") return;
+    const path = window.location.pathname;
+    if (path.startsWith("/login") || path.startsWith("/signup")) return;
+    // ApiClient is framework-agnostic and has no Next router context.
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+    window.location.href = "/login";
+  }
+
   get<T>(path: string, redirectOnUnauthorized = true) {
     return this.request<T>(path, { method: "GET" }, redirectOnUnauthorized);
   }
@@ -96,28 +202,45 @@ export class ApiClient {
   post<T>(path: string, body?: unknown, redirectOnUnauthorized = true) {
     return this.request<T>(path, {
       method: "POST",
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      body: body ?? undefined,
     }, redirectOnUnauthorized);
   }
 
   put<T>(path: string, body?: unknown, redirectOnUnauthorized = true) {
     return this.request<T>(path, {
       method: "PUT",
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      body: body ?? undefined,
     }, redirectOnUnauthorized);
   }
 
   patch<T>(path: string, body?: unknown, redirectOnUnauthorized = true) {
     return this.request<T>(path, {
       method: "PATCH",
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      body: body ?? undefined,
     }, redirectOnUnauthorized);
   }
 
   delete<T>(path: string, redirectOnUnauthorized = true) {
     return this.request<T>(path, { method: "DELETE" }, redirectOnUnauthorized);
   }
+
+  upload<T>(path: string, formData: FormData, redirectOnUnauthorized = true) {
+    return this.request<T>(
+      path,
+      {
+        method: "POST",
+        body: formData,
+        bodyFactory: () => {
+          const fresh = new FormData();
+          formData.forEach((value, key) => {
+            fresh.append(key, value as Blob | string);
+          });
+          return fresh;
+        },
+      },
+      redirectOnUnauthorized,
+    );
+  }
 }
 
-/** Singleton client for use across the app. */
 export const api = new ApiClient();

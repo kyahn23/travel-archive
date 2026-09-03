@@ -58,13 +58,19 @@ public class AuthService {
     public IssuedTokens refresh(String refreshToken) {
         jwtTokenProvider.validateRefreshToken(refreshToken);
         String tokenHash = jwtTokenProvider.hash(refreshToken);
-        RefreshToken storedToken = refreshTokenRepository.findByTokenHash(tokenHash)
+        RefreshToken storedToken = refreshTokenRepository.findByTokenHashForUpdate(tokenHash)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid refresh token"));
         if (!storedToken.isActive(LocalDateTime.now())) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Expired refresh token");
         }
-        String accessToken = jwtTokenProvider.createAccessToken(storedToken.getUser());
-        return new IssuedTokens(accessToken, refreshToken);
+        User user = storedToken.getUser();
+        storedToken.revoke(LocalDateTime.now());
+        refreshTokenRepository.flush();
+        String newAccessToken = jwtTokenProvider.createAccessToken(user);
+        String newRefreshToken = jwtTokenProvider.createRefreshToken(user);
+        refreshTokenRepository.save(new RefreshToken(user, jwtTokenProvider.hash(newRefreshToken),
+                LocalDateTime.now().plus(JwtTokenProvider.REFRESH_TOKEN_TTL)));
+        return new IssuedTokens(newAccessToken, newRefreshToken);
     }
 
     @Transactional

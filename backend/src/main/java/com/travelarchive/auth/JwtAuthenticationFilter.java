@@ -31,6 +31,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String accessToken = cookieValue(request, AuthController.ACCESS_TOKEN_COOKIE);
         if (accessToken != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             try {
+                jwtTokenProvider.validateAccessToken(accessToken);
                 String email = jwtTokenProvider.subject(accessToken);
                 UserDetails userDetails = userDetailsService.loadUserByUsername(email);
                 UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(

@@ -1,6 +1,7 @@
 package com.travelarchive.trip;
 
 import com.travelarchive.common.enums.PhotoOwnerType;
+import com.travelarchive.storage.TransactionalFileCleanup;
 import com.travelarchive.trip.dto.TimelineItemRequest;
 import com.travelarchive.trip.dto.TimelineItemResponse;
 import com.travelarchive.user.User;
@@ -18,23 +19,22 @@ import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class TimelineService {
-    private static final long MAX_PHOTOS_PER_ITEM = 3;
-    private static final long MAX_PHOTO_SIZE_BYTES = 5 * 1024 * 1024;
-
     private final TripRepository tripRepository;
     private final TripDayRepository tripDayRepository;
     private final TripTimelineItemRepository timelineItemRepository;
     private final TripPhotoRepository photoRepository;
     private final UserRepository userRepository;
+    private final TransactionalFileCleanup fileCleanup;
 
     public TimelineService(TripRepository tripRepository, TripDayRepository tripDayRepository,
                            TripTimelineItemRepository timelineItemRepository, TripPhotoRepository photoRepository,
-                           UserRepository userRepository) {
+                           UserRepository userRepository, TransactionalFileCleanup fileCleanup) {
         this.tripRepository = tripRepository;
         this.tripDayRepository = tripDayRepository;
         this.timelineItemRepository = timelineItemRepository;
         this.photoRepository = photoRepository;
         this.userRepository = userRepository;
+        this.fileCleanup = fileCleanup;
     }
 
     @Transactional(readOnly = true)
@@ -79,26 +79,20 @@ public class TimelineService {
     @Transactional
     public void delete(String email, Long id) {
         User user = currentUser(email);
-        timelineItemRepository.delete(findOwnedItem(id, user.getId()));
-    }
-
-    @Transactional
-    public TimelineItemResponse.PhotoResponse addPhoto(String email, Long id, TimelineItemRequest.PhotoRequest request) {
-        User user = currentUser(email);
         TripTimelineItem item = findOwnedItem(id, user.getId());
-        validatePhoto(request);
-        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Use multipart upload for photos");
-    }
 
-    private TimelineItemResponse.PhotoResponse persistPhoto(TripTimelineItem item, TimelineItemRequest.PhotoRequest request) {
-        long currentCount = photoRepository.countByTimelineItemIdAndOwnerType(item.getId(), PhotoOwnerType.TIMELINE_ITEM);
-        if (currentCount >= MAX_PHOTOS_PER_ITEM) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Timeline item can have at most 3 photos");
-        }
-        TripPhoto photo = photoRepository.save(new TripPhoto(item.getTripDay().getTrip(), item, PhotoOwnerType.TIMELINE_ITEM,
-                request.storageKey(), request.fileUrl(), request.originalFileName(), request.contentType(), request.fileSize(),
-                request.caption(), (int) currentCount));
-        return TimelineItemResponse.PhotoResponse.from(photo);
+        List<TripPhoto> ownedPhotos = photoRepository.findAllByTimelineItemId(item.getId());
+        List<String> storageKeys = ownedPhotos.stream()
+                .map(TripPhoto::getStorageKey)
+                .filter(k -> k != null && !k.isBlank())
+                .toList();
+
+        photoRepository.deleteByTimelineItemId(item.getId());
+        photoRepository.flush();
+        timelineItemRepository.delete(item);
+        timelineItemRepository.flush();
+
+        fileCleanup.registerAfterCommit(storageKeys);
     }
 
     private User currentUser(String email) {
@@ -171,16 +165,6 @@ public class TimelineService {
                 .findFirst()
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "visitedAt must be within trip dates"));
         return new TimelineFields(day, itemTime, title, memo, placeName, address, latitude, longitude, category);
-    }
-
-    private void validatePhoto(TimelineItemRequest.PhotoRequest request) {
-        if (request == null || isBlank(request.storageKey()) || isBlank(request.originalFileName())
-                || isBlank(request.contentType()) || request.fileSize() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "photo metadata is required");
-        }
-        if (request.fileSize() <= 0 || request.fileSize() > MAX_PHOTO_SIZE_BYTES) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "photo must be 5MB or smaller");
-        }
     }
 
     private boolean isBlank(String value) {

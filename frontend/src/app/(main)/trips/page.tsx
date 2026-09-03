@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/card";
 import { TripCard } from "@/components/trips/TripCard";
 import type { Trip, TripStatus, TravelScope, CreateTripPayload } from "@/types/travel";
-import { TRIP_STATUS_LABEL, SCOPE_LABEL, COUNTRIES, DOMESTIC_REGIONS } from "@/types/travel";
+import { SCOPE_LABEL, COUNTRIES, DOMESTIC_REGIONS } from "@/types/travel";
 import { Map } from "lucide-react";
 
 type FilterStatus = TripStatus | "ALL";
@@ -94,6 +94,13 @@ export default function TripsPage() {
     if (!title.trim()) { setCreateError("제목을 입력해주세요."); return; }
     if (!startDate || !endDate) { setCreateError("날짜를 입력해주세요."); return; }
     if (new Date(endDate) < new Date(startDate)) { setCreateError("도착일은 출발일 이후여야 합니다."); return; }
+    if (!cityName.trim()) { setCreateError("도시명을 입력해주세요."); return; }
+    if (travelScope === "DOMESTIC" && !domesticRegionId) {
+      setCreateError("국내 여행은 지역을 선택해주세요."); return;
+    }
+    if (travelScope === "INTERNATIONAL" && !countryId) {
+      setCreateError("해외 여행은 국가를 선택해주세요."); return;
+    }
 
     setCreating(true);
     try {
