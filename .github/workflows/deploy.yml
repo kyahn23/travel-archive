@@ -29,6 +29,14 @@ jobs:
       - name: Verify merged revision
         run: test "$(git rev-parse HEAD)" = "$APP_VERSION"
 
+      - name: Connect to N100 through Tailscale
+        uses: tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8 # v4
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+          ping: ${{ secrets.SERVER_HOST }}
+
       - name: Setup SSH key
         uses: webfactory/ssh-agent@dc588b651fe13675774614f8e6a936a468676387 # v0.9.0
         with:
