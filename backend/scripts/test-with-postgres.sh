@@ -120,7 +120,7 @@ step "wait healthy" docker compose \
   --project-name "$TA_PROJECT" \
   exec -T postgres pg_isready -U ta_test -d travel_archive_test
 
-TMP_DIR="$(mktemp -d /private/tmp/ta-backend-check.XXXXXX)"
+TMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/ta-backend-check.XXXXXX")"
 log "tmp_dir=$TMP_DIR"
 
 rsync -a \

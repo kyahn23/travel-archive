@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Travel Archive verify-clean-copy.sh
-# Byte-copy the working tree to a private /private/tmp dir, then run the
+# Byte-copy the working tree to a private temporary directory, then run the
 # four documented gates in order against that copy:
 #   1. docker compose -f docker-compose.infrastructure.yml config --quiet
 #   2. docker compose -f docker-compose.yml config --quiet
@@ -14,12 +14,12 @@
 set -eEuo pipefail
 
 SOURCE_ROOT="$(git rev-parse --show-toplevel)"
-EVIDENCE="${ATTEMPT_DIR:-$(mktemp -d /private/tmp/ta-clean-verify.XXXXXX)}/clean-copy.txt"
+EVIDENCE="${ATTEMPT_DIR:-$(mktemp -d "${TMPDIR:-/tmp}/ta-clean-verify.XXXXXX")}/clean-copy.txt"
 mkdir -p "$(dirname "$EVIDENCE")"
 : > "$EVIDENCE"
 log() { printf '%s\n' "$*" | tee -a "$EVIDENCE" >&2; }
 
-CLEAN_ROOT="$(mktemp -d /private/tmp/ta-clean-copy.XXXXXX)"
+CLEAN_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/ta-clean-copy.XXXXXX")"
 log "clean_root=${CLEAN_ROOT}"
 
 TA_CLEAN_RUN_ID="$(uuidgen 2>/dev/null || python3 -c 'import uuid; print(uuid.uuid4())')"

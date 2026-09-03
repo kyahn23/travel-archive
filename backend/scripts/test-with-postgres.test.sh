@@ -3,7 +3,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-HARNESS_DIR="$(mktemp -d /private/tmp/ta-script-test.XXXXXX)"
+HARNESS_DIR="$(mktemp -d "${TMPDIR:-/tmp}/ta-script-test.XXXXXX")"
 FAKE_BIN="$HARNESS_DIR/bin"
 EVIDENCE="$HARNESS_DIR/evidence.log"
 ARGS_LOG="$HARNESS_DIR/gradle-args.log"

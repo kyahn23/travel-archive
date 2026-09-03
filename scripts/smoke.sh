@@ -7,8 +7,8 @@ TA_SMOKE_RUN_ID="$(uuidgen 2>/dev/null || python3 -c 'import uuid; print(uuid.uu
 TA_SMOKE_RUN_ID="$(printf '%s' "$TA_SMOKE_RUN_ID" | tr '[:upper:]' '[:lower:]')"
 TA_SMOKE_PORT="$(( (RANDOM % 20000) + 30000 ))"
 TA_SMOKE_PROJECT="ta-smoke-$TA_SMOKE_RUN_ID"
-EVIDENCE="${EVIDENCE:-/private/tmp/travel-archive-smoke-$TA_SMOKE_RUN_ID.txt}"
-JAR="$(mktemp /private/tmp/ta-smoke-cookie.XXXXXX)"
+EVIDENCE="${EVIDENCE:-${TMPDIR:-/tmp}/travel-archive-smoke-$TA_SMOKE_RUN_ID.txt}"
+JAR="$(mktemp "${TMPDIR:-/tmp}/ta-smoke-cookie.XXXXXX")"
 
 export TA_SMOKE_RUN_ID TA_SMOKE_PORT
 
