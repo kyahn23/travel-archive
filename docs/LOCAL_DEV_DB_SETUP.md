@@ -100,7 +100,7 @@ export DB_URL="jdbc:postgresql://localhost:5432/travel_archive"
 export DB_USERNAME="travel_archive"
 export DB_PASSWORD="<travel-archive-db-password>"
 export JWT_SECRET="<jwt-secret-at-least-32-chars>"
-./gradlew bootRun --args='--spring.profiles.active=local' &
+./gradlew bootRun --args='--spring.profiles.active=local' > backend.log 2>&1 &
 BACKEND_PID=$!
 echo "backend_pid=$BACKEND_PID"
 echo "$BACKEND_PID" > backend.pid
@@ -112,7 +112,7 @@ echo "$BACKEND_PID" > backend.pid
 # backend/ 디렉터리에서 실행 (disposable PG는 별도 스택에서 기동)
 cd backend
 export JWT_SECRET="<jwt-secret-at-least-32-chars>"
-./gradlew bootRun --args='--spring.profiles.active=dev' &
+./gradlew bootRun --args='--spring.profiles.active=dev' > backend.log 2>&1 &
 BACKEND_PID=$!
 echo "backend_pid=$BACKEND_PID"
 echo "$BACKEND_PID" > backend.pid
@@ -139,7 +139,8 @@ cd backend
 curl -fsS http://127.0.0.1:8080/api/health
 
 # backend 로그 tail (다른 터미널)
-tail -n 100 -f build/tmp/bootRun.log 2>/dev/null || true
+# bootRun은 stdout으로 출력한다. 기동 시 ./gradlew bootRun ... > backend.log 2>&1 & 로 리다이렉트했으면:
+tail -n 100 -f backend.log 2>/dev/null || true
 
 # disposable PG의 Flyway history 확인 (`dev` profile 사용 시 V1, V2, V3 success 행)
 PGPASSWORD='ta_test_only_password' psql \
@@ -151,7 +152,7 @@ legacy DB의 Flyway history는 backend 기동 중에도 변하지 않는다 (`lo
 
 ### 4. 종료 (shutdown-by-PID)
 
-`backend.pid`에 기록한 PID를 기반으로 종료한다. `kill -9`, container/DB 삭제, `docker compose down -v`는 사용하지 않는다.
+`backend.pid`에 기록한 PID를 기반으로 종료한다. `kill -9`, container/DB 삭제, persistent stack에서의 `docker compose down -v`는 사용하지 않는다. UUID 기반 disposable stack은 `down -v --remove-orphans`로 볼륨까지 정리한다.
 
 ```bash
 # backend/ 디렉터리에서 실행
@@ -164,9 +165,9 @@ if [[ -f backend.pid ]]; then
 fi
 pgrep -af 'travel-archive.*bootRun' || echo "no backend process"
 
-# disposable PG 종료 (UUID project 단위 teardown, --remove-orphans 만 사용)
+# disposable PG 종료 (UUID project 단위 teardown, 볼륨 포함)
 docker compose -f docker-compose.test.yml \
-  --project-name "$COMPOSE_PROJECT_NAME" down --remove-orphans
+  --project-name "$COMPOSE_PROJECT_NAME" down -v --remove-orphans
 unset COMPOSE_PROJECT_NAME TA_TEST_PORT
 ```
 
@@ -221,7 +222,7 @@ docker compose -f docker-compose.smoke.yml \
 # 프로젝트 루트에서 실행
 cd "$(git rev-parse --show-toplevel)"
 docker compose -f docker-compose.smoke.yml \
-  --project-name "ta-smoke-$TA_SMOKE_RUN_ID" down --remove-orphans
+  --project-name "ta-smoke-$TA_SMOKE_RUN_ID" down -v --remove-orphans
 unset TA_SMOKE_RUN_ID TA_SMOKE_PORT
 ```
 

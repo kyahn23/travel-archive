@@ -1,6 +1,6 @@
 # Travel Archive 데이터베이스 설계
 
-> **설계 참고 (2026-08-18)**: 도메인/테이블 설명용 문서다. 현재 schema 적용 절차나 migration 이력의 권위 문서가 아니다. 실제 DB 작업은 `docs/README.md`와 `docs/N100_POSTGRES_FROM_LOCAL_DOCKER.md`를 따른다.
+> 도메인/테이블 설명용 문서다. 실제 스키마의 권위는 `backend/src/main/resources/db/migration/`의 Flyway migration이다.
 
 > 이 문서는 **JPA Entity 기반**으로 실제 운영 중인 Travel Archive의 데이터베이스 구조를 정리한 학습용 문서입니다.  
 > 각 테이블의 컬럼, 제약조건, 관계, 그리고 실제 어떤 흐름에서 사용되는지를 설명합니다.
@@ -11,7 +11,7 @@
 
 | 항목 | 내용 |
 |------|------|
-| DBMS | PostgreSQL 16 (개발/운영), H2 (로컬 dev/test) |
+| DBMS | PostgreSQL 16 (개발/테스트/운영) |
 | ORM | JPA (Hibernate) |
 | 스키마 관리 | Flyway V1–V3, JPA `ddl-auto: validate` |
 | 공통 전략 | `BaseEntity` 상속으로 `created_at`/`updated_at` 자동 관리 |
