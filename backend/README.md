@@ -109,15 +109,15 @@ cd backend
 BACKEND_PID="$(pgrep -f 'travel-archive.*bootRun' | head -n1)"
 [[ -n "$BACKEND_PID" ]] && kill "$BACKEND_PID" && wait "$BACKEND_PID" 2>/dev/null
 
-# disposable PG 종료 (UUID project 단위 teardown)
+# disposable PG 종료 (UUID project 단위 teardown, 볼륨 포함)
 docker compose -f docker-compose.test.yml \
-  --project-name "$COMPOSE_PROJECT_NAME" down --remove-orphans
+  --project-name "$COMPOSE_PROJECT_NAME" down -v --remove-orphans
 ```
 
-> **금지**: 다음 명령은 어떤 lineage에서도 사용하지 않는다.
+> **금지**: 다음 명령은 persistent stack이나 legacy DB lineage에서 사용하지 않는다. UUID 기반 disposable stack은 teardown 시 `down -v --remove-orphans`로 볼륨까지 정리할 수 있다.
 >
 > ```text
-> docker compose down -v                              # persistent volume/DB 삭제
+> docker compose down -v                              # persistent stack에서만 금지; disposable stack은 위 예시로 정리
 > docker volume rm <volume>                           # volume 직접 삭제
 > docker run --name travel-archive-db ...             # legacy container를 직접 mutate
 > flyway repair                                       # Flyway history 수정
@@ -162,7 +162,7 @@ export DB_URL="jdbc:postgresql://localhost:5432/travel_archive"
 export DB_USERNAME="travel_archive"
 export DB_PASSWORD="<legacy-db-password>"
 export JWT_SECRET="your-32-char-secret-key-here-change-me"
-./gradlew bootRun --args='--spring.profiles.active=local' &
+./gradlew bootRun --args='--spring.profiles.active=local' > backend.log 2>&1 &
 BACKEND_PID=$!
 echo "backend_pid=$BACKEND_PID"
 ```
@@ -179,7 +179,7 @@ echo $BACKEND_PID > backend.pid
 ```bash
 cd backend
 export JWT_SECRET="your-32-char-secret-key-here-change-me"
-./gradlew bootRun --args='--spring.profiles.active=dev' &
+./gradlew bootRun --args='--spring.profiles.active=dev' > backend.log 2>&1 &
 BACKEND_PID=$!
 echo "backend_pid=$BACKEND_PID"
 ```
@@ -196,10 +196,11 @@ cd backend
 # health (read-only)
 curl -fsS http://127.0.0.1:8080/api/health
 
-# bootRun 로그 tail (다른 터미널에서)
-tail -n 100 -f build/tmp/bootRun.log
-# 또는 Spring Boot 기본 위치
-ls logs/ 2>/dev/null
+# bootRun 로그 모니터링 (stdout 리다이렉트 기준)
+# bootRun은 기본적으로 stdout으로 로그를 출력한다.
+# 별도 터미널에서 기동 중인 프로세스 출력을 보거나,
+# 위 기동 예시처럼 ./gradlew bootRun ... > backend.log 2>&1 & 로 리다이렉트한 경우:
+tail -n 100 -f backend.log
 ```
 
 legacy DB의 Flyway history는 backend 기동 중에도 변하지 않는다 (`local` profile은 Flyway disabled). `dev` profile로 띄운 경우에만 Flyway가 `flyway_schema_history`에 V1, V2, V3 성공 행을 추가한다.
@@ -246,7 +247,7 @@ cd backend
 - Hibernate schema validation 성공
 - disposable PG는 스크립트 종료 시 UUID project 단위로 자동 teardown
 
-> **주의**: 현재 `V2__legacy_reconciliation.sql`은 clean DB에서 실패할 수 있다 (`is_nullable`을 BOOLEAN 변수로 받는 이슈는 이미 보정되었으나, 다른 legacy 가정은 별도 확인이 필요하다). 성공 여부는 evidence log로 확인하고 실패 시 별도 호환 작업으로 본다.
+> **참고**: `V2__legacy_reconciliation.sql`의 legacy 가정은 현재 코드 기준으로 보정되어 있어 clean DB에서도 V1→V3 마이그레이션이 깨끗이 통과한다. evidence log로 결과를 확인한다.
 
 ### 6. 격리 smoke (isolated full-stack smoke)
 
@@ -266,7 +267,7 @@ docker compose -f docker-compose.smoke.yml \
 
 ```bash
 curl -fsS "http://127.0.0.1:${TA_SMOKE_PORT}/"
-curl -fsS "http://127.0.0.1:${TA_SMOKE_PORT}:8080/api/health" 2>/dev/null || \
+curl -fsS "http://127.0.0.1:${TA_SMOKE_PORT}/api/health" 2>/dev/null || \
   docker compose -f docker-compose.smoke.yml \
     --project-name "ta-smoke-$TA_SMOKE_RUN_ID" \
     exec -T backend curl --fail --silent http://localhost:8080/api/health
@@ -277,7 +278,7 @@ curl -fsS "http://127.0.0.1:${TA_SMOKE_PORT}:8080/api/health" 2>/dev/null || \
 ```bash
 cd "$(git rev-parse --show-toplevel)"
 docker compose -f docker-compose.smoke.yml \
-  --project-name "ta-smoke-$TA_SMOKE_RUN_ID" down --remove-orphans
+  --project-name "ta-smoke-$TA_SMOKE_RUN_ID" down -v --remove-orphans
 unset TA_SMOKE_RUN_ID TA_SMOKE_PORT
 ```
 
