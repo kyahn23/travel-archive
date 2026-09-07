@@ -1,12 +1,12 @@
 # Travel Archive 보안·백업·운영 가이드
 
-이 문서는 배포 gate를 통과한 뒤의 운영 기준이다. 코드 검증 결과와 남은 외부 설정은 `docs/README.md`를 따른다.
+이 문서는 최초 N100 운영 배포 이후 반복적으로 적용하는 운영 기준이다.
 
 ## 1. 네트워크 최소 노출
 
 - PostgreSQL 5432: host publish 제거 권장. 필요 시 `127.0.0.1` 또는 명시한 관리 LAN만 허용.
 - backend 8080: Docker network 내부 전용.
-- frontend 3000: NPM이 Docker network로 접근하면 host publish 제거 가능.
+- frontend: container 내부 `3000`, host loopback 기본 `127.0.0.1:3002`. NPM은 `travel-archive` network에서 frontend container로 접근한다.
 - 외부 공개: NPM의 80/443만.
 - SSH: key 인증과 신뢰 관리 대역 사용.
 
@@ -35,8 +35,6 @@ sudo ufw status verbose
 - frontend: `GET /` → 200
 
 `/api/auth/me`의 401은 backend 장애가 아니다. healthcheck나 자동 restart 조건으로 200을 기대하면 안 된다.
-
-현재 Compose/workflow는 이 계약과 다르므로 수정 전 운영하지 않는다.
 
 운영 시 최소 확인 항목:
 
@@ -72,7 +70,7 @@ daemon 설정 변경은 서버의 다른 container에도 영향을 주므로 유
 - source와 분리된 저장 위치
 - disposable PostgreSQL/volume에 실제 restore한 성공 evidence
 
-`scripts/backup.sh`는 custom-format dump, uploads archive, manifest, checksum을 원자적으로 게시한다. 매 run 후 `BACKUP_RUN_DIR=<run> bash scripts/verify-backup.sh`로 disposable PostgreSQL/volume restore drill을 수행한다. N100의 첫 restore drill이 통과하기 전 cron을 등록하지 않는다.
+`scripts/backup.sh`는 custom-format dump, uploads archive, manifest, checksum을 원자적으로 게시한다. 정기적으로 `BACKUP_RUN_DIR=<run> bash scripts/verify-backup.sh`로 disposable PostgreSQL/volume restore drill을 수행한다.
 
 ## 5. 수동 DB snapshot 예시
 
@@ -116,7 +114,7 @@ uploads archive와 manifest, off-host copy, restore drill은 별도로 반드시
 
 ## 7. 배포와 rollback
 
-배포 전에 test/build/migration/smoke gate를 통과한다. release는 Git SHA 등 immutable tag로 식별한다.
+운영 배포는 동일 저장소의 `main → prod` Pull Request가 GitHub에서 merge될 때만 실행한다. `prod` push 자체는 배포 트리거가 아니다. 배포 전에 PR의 test/build/migration/smoke gate를 통과하며 release는 merge commit SHA로 식별한다.
 
 rollback에는 다음이 필요하다.
 
@@ -125,7 +123,7 @@ rollback에는 다음이 필요하다.
 - DB migration의 forward-fix/restore 결정
 - rollback 후 `/api/health`, frontend, auth flow 검증
 
-현재 `scripts/deploy.sh`, workflow, 수동 문서의 tag 동작은 이 계약을 입증하지 못하므로 운영 자동화로 사용하지 않는다.
+표준 배포 경로는 `.github/workflows/deploy.yml`과 `scripts/deploy.sh`이며, GitHub Actions 장애 시에만 `docs/MANUAL_DEPLOY.md`를 사용한다.
 
 ## 8. 정기 점검
 

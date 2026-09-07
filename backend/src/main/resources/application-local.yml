@@ -1,0 +1,4 @@
+# ponytail: Legacy-local compatibility only; remove after a deliberate migration moves this DB to the current Flyway lineage.
+spring:
+  flyway:
+    enabled: false

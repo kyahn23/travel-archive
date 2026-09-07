@@ -1,10 +1,10 @@
 # Travel Archive - Frontend
 
-Next.js 16.2.6 App Router 기반 프론트엔드입니다.
+Next.js 16 App Router 기반 프론트엔드입니다. 정확한 패키지 버전은 `package.json`과 `package-lock.json`을 기준으로 합니다.
 
 ## 사전 준비
 
-- Node.js 18 이상
+- Node.js 20 이상
 - 백엔드 서버가 `http://localhost:8080`에서 실행 중이어야 합니다.
 
 ## 설치
@@ -35,15 +35,15 @@ npm run build
 
 | 기술 | 버전 | 용도 |
 |------|------|------|
-| Next.js | 14.2.35 | React 프레임워크 (App Router) |
-| React | 18.3.1 | UI 라이브러리 |
+| Next.js | 16.3.3 | React 프레임워크 (App Router) |
+| React | 19.2.7 | UI 라이브러리 |
 | TypeScript | 5.7.2 | 정적 타입 |
 | Tailwind CSS | 3.4.17 | 유틸리티 CSS |
 | Leaflet | 1.9.4 | 지도 (타임라인 마커) |
 | react-leaflet | 5.0.0 | Leaflet React 래퍼 (React 19 지원) |
-| @vnedyalk0v/react19-simple-maps | 2.0.7 | SVG 세계/국내 지도 (React 19 호환) |
+| @vnedyalk0v/react19-simple-maps | 2.0.9 | SVG 세계/국내 지도 (React 19 호환) |
 | Recharts | 3.8.1 | 통계 차트 |
-| Lucide React | 1.14.0 | 아이콘 |
+| Lucide React | 1.17.0 | 아이콘 |
 
 ## 프로젝트 구조
 
@@ -80,7 +80,7 @@ src/
 
 ## 중요 참고 사항
 
-### 라우팅 변경 (2026-05-18)
+### 현재 라우팅
 
 - `/`는 이제 **비로그인 공개 홈**입니다. 샘플 데이터 기반 미리보기와 가입/로그인 유도 CTA를 제공합니다.
 - `/dashboard`는 **로그인 후 홈 대시보드**입니다. 실제 사용자 API 데이터를 표시합니다.
@@ -101,7 +101,7 @@ const LeafletMap = dynamic(() => import("@/components/maps/LeafletMap"), {
 
 ### `@vnedyalk0v/react19-simple-maps` GeoJSON 로딩
 
-`@vnedyalk0v/react19-simple-maps`는 납치 내 보안 정책으로 인해 `localhost` 환경에서 상대경로 GeoJSON URL(`/geo/...`)을 fetch할 수 없습니다. 이를 해결하기 위해 컴포넌트에서 GeoJSON 파일을 직접 import하여 객체로 전달합니다.
+`@vnedyalk0v/react19-simple-maps`는 로컬 보안 정책의 영향을 피하기 위해 GeoJSON 파일을 컴포넌트에서 직접 import하여 객체로 전달합니다.
 
 ```tsx
 import koreaGeo from "@/lib/geo/korea-sido.json";
@@ -142,4 +142,13 @@ import { Map as MapIcon } from "lucide-react";
 }
 ```
 
-`NEXT_PUBLIC_API_BASE_URL` 환경 변수로 백엔드 주소를 변경할 수 있습니다.
+`API_ORIGIN` 환경 변수로 백엔드 주소를 변경할 수 있습니다.
+
+## 검증
+
+```bash
+npm run lint
+npm run typecheck
+npm run test
+npm run build
+```

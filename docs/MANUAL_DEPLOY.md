@@ -1,6 +1,5 @@
 # 수동 배포 폴백 가이드
 
-> **자동 배포 우선 (2026-08-26)**
 > 표준 운영 배포는 `prod` Pull Request merge workflow다. 이 문서는 GitHub Actions 장애 시 검증된 merge commit SHA를 수동 배포하는 폴백이다.
 
 ## 배포 전 필수 증거
@@ -18,28 +17,41 @@
 ## 수동 폴백 흐름
 
 ```bash
-ssh your-n100-alias
-cd ~/travel-archive
+git fetch origin prod
+APP_VERSION="$(git rev-parse origin/prod)"
+test "$(git rev-parse HEAD)" = "$APP_VERSION"
+test -z "$(git status --porcelain)"
+export APP_VERSION
+export SERVER_HOST="<deploy-user>@<n100-host>"
 
-git status --short
-git fetch --prune
-git rev-parse HEAD
+rsync -az \
+  --exclude='.git' \
+  --exclude='.env*' \
+  --exclude='.omo' \
+  --exclude='.opencode' \
+  --exclude='.playwright-mcp' \
+  --exclude='node_modules' \
+  --exclude='backend/build' \
+  --exclude='backend/.gradle' \
+  --exclude='backend/bin' \
+  --exclude='frontend/.next' \
+  ./ "$SERVER_HOST":~/travel-archive/
 
-docker compose -f docker-compose.infrastructure.yml ps
-docker exec home-postgres sh -lc '
+ssh "$SERVER_HOST" 'cd ~/travel-archive && test -f .env.app && \
+  docker compose -f docker-compose.infrastructure.yml ps && \
+  docker exec home-postgres sh -lc '\''
   PGPASSWORD="$DB_PASSWORD" psql \
     -v ON_ERROR_STOP=1 -h 127.0.0.1 \
     -U travel_archive -d travel_archive \
     -c "select installed_rank, version, script, checksum, success from flyway_schema_history order by installed_rank"
-'
+'\'''
 ```
 
 위 결과와 배포 대상 migration을 비교하고 backup/restore evidence를 확인한다. 그 다음에만 검증된 release 절차로 build/up한다.
 
 ```bash
-APP_VERSION=<verified-git-sha> docker compose --env-file .env.app build backend frontend
-APP_VERSION=<verified-git-sha> docker compose --env-file .env.app up -d --no-build
-docker compose --env-file .env.app ps
+SERVER_HOST="$SERVER_HOST" APP_VERSION="$APP_VERSION" bash scripts/deploy.sh
+ssh "$SERVER_HOST" 'cd ~/travel-archive && docker compose --env-file .env.app ps'
 ```
 
 검증은 실제 접근 경로에서 수행한다.

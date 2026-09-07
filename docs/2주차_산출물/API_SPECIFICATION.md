@@ -1,8 +1,8 @@
 # Travel Archive API 명세서
 
-> **설계 명세 참고**: 현재 작업 트리의 controller/DTO/frontend client가 우선이며, 이 문서만으로 배포 가능 여부를 판단하지 않는다. 현재 차단 사항은 `docs/README.md`를 따른다.
+> 현재 controller/DTO/frontend client를 이해하기 위한 API 참고 문서다. 충돌 시 실행 코드와 테스트가 우선한다.
 
-> **작성 기준**: 2주차 개발 완료 시점의 백엔드 REST API (Spring Boot 4.0.6)
+> **작성 기준**: 현재 백엔드 REST API (Spring Boot 4.0.6)
 > **인증 방식**: JWT (httpOnly Cookie) — `access_token`, `refresh_token`
 > **Base URL**: `http://localhost:8080`
 > **응답 포맷**: 공통 래퍼 `ApiResponse<T>` (`{ data: T, message: string }`)
@@ -18,6 +18,7 @@
 | Refresh Token TTL | 7일 |
 | Cookie 속성 | `HttpOnly`, `SameSite=Strict`, Secure는 prod profile에서만 활성화 |
 | Content-Type | `application/json` (파일 업로드 제외) |
+| CSRF | unsafe 요청은 `GET /api/auth/csrf`로 받은 토큰을 `X-XSRF-TOKEN` 헤더로 전송 |
 
 ---
 
@@ -38,7 +39,7 @@ POST /api/auth/signup
 | nickname | string | `@NotBlank` `@Size(min=2, max=80)` | 닉네임 |
 
 **Response**
-- `201 Created`
+- `200 OK`
 - `Set-Cookie: access_token=...; refresh_token=...`
 - `data`: `{ tokenType: "Bearer", accessTokenExpiresInSeconds: 900 }`
 
@@ -396,18 +397,6 @@ DELETE /api/timeline-items/{id}
 ```
 
 **Response**: `200 OK`
-
----
-
-### 4.5 타임라인 항목에 사진 추가 (메타데이터)
-
-```http
-POST /api/timeline-items/{id}/photos
-```
-
-**Request Body**: `{ storage_key, file_url, original_file_name, content_type, file_size, caption }`
-
-**Response**: `201 Created` — `PhotoResponse`
 
 ---
 

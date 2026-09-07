@@ -1,7 +1,7 @@
 # 개인 여행 아카이브 디자인 시스템
 
 작성일: 2026-05-08  
-기준 문서: `docs/travel_archive_prd.md`, `docs/ui_brief.md`  
+기준 문서: `docs/travel_archive_prd.md`
 기준 시안: `docs/design` 폴더의 최종 시안. 단, `concept_web.png`, `concept_mobile.png`는 초기 컨셉 시안으로 보고 최종 기준에서 제외한다.
 
 ---

@@ -59,6 +59,8 @@ cd travel-archive
 
 PostgreSQL은 `docker-compose.infrastructure.yml`, 앱은 `docker-compose.yml`로 분리되어 있습니다. 기존 container, volume, DB는 사용자 데이터일 수 있으므로 새 환경임이 확인되기 전에 기동·초기화하지 마십시오. `docker compose down -v`, volume/DB 삭제, Flyway history 수정은 기본 절차가 아닙니다.
 
+> root `docker-compose.yml`은 backend + frontend를 함께 띄우는 **프로덕션 application stack**입니다. 외부 `infrastructure` 네트워크와 외부 `home-postgres` 서비스를 가정하므로 로컬에서 단독 PostgreSQL만 띄우는 용도로 사용하지 마십시오. 로컬 PostgreSQL은 `docker compose -f docker-compose.infrastructure.yml up -d`를 사용합니다.
+
 신규 전용 DB를 준비할 때는 먼저 [로컬 DB 가이드](docs/LOCAL_DEV_DB_SETUP.md)를 따르고, root `.env`에는 실제 비밀값을 직접 설정합니다. 문서의 `<postgres-admin-password>`, `<database-password>`, `<jwt-secret>`은 placeholder입니다.
 
 DB 생성 계약은 다음과 같습니다.
@@ -72,35 +74,31 @@ DB 생성 계약은 다음과 같습니다.
 
 ### 4. 백엔드 실행
 
-Docker PostgreSQL을 사용하는 기본 profile로 실행합니다:
+기존 호환 legacy DB에 연결할 때는 `local` profile을 사용합니다. 이 profile은 Flyway만 비활성화하고 Hibernate `ddl-auto: validate`는 유지하므로, Flyway `V1~V3`이 적용되지 않은 기존 DB에서도 schema 일치 여부만 확인합니다:
 
 ```bash
 cd backend
-./gradlew bootRun
+./gradlew bootRun --args='--spring.profiles.active=local'
 ```
 
 기본적으로 `http://localhost:8080`에서 실행됩니다.
 
-`dev` profile도 Flyway로 schema를 적용하고 JPA `ddl-auto: validate`로 일치 여부만 확인합니다:
-
-```bash
-./gradlew bootRun --args='--spring.profiles.active=dev'
-```
+깨끗한 DB에 대해 Flyway `V1→V3` 마이그레이션을 처음부터 적용하는 검증 경로는 `dev` profile과 격리 도구(`backend/scripts/test-with-postgres.sh` 또는 `scripts/smoke.sh`)를 함께 사용합니다. 임시 격리 컨테이너에서 DB가 만들어지고 마이그레이션이 적용·검증되며, 작업이 끝나면 컨테이너와 함께 정리됩니다. 평소 로컬 실행 경로가 아닙니다.
 
 ### 5. 프론트엔드 실행
 
 ```bash
 cd frontend
 npm install
-npm run dev
+API_ORIGIN=http://127.0.0.1:8080 npm run dev -- --hostname 127.0.0.1 --port 3000
 ```
 
-기본적으로 `http://localhost:3000`에서 실행됩니다.
+기본적으로 `http://127.0.0.1:3000`에서 실행되며 `/api/*` 요청은 `API_ORIGIN`(백엔드 `http://127.0.0.1:8080`)으로 rewrite됩니다.
 
-프로덕션 빌드에서 Next.js 서버의 backend 대상은 `API_ORIGIN`으로 지정합니다.
+프로덕션 빌드에서도 같은 env를 지정합니다:
 
 ```bash
-API_ORIGIN=http://localhost:8080 npm run build
+API_ORIGIN=http://127.0.0.1:8080 npm run build
 ```
 
 ## 환경별 특이사항
