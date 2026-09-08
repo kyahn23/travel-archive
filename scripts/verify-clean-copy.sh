@@ -71,12 +71,12 @@ docker compose -f "${CLEAN_ROOT}/docker-compose.yml" config --quiet
 log "PASS app compose config"
 
 log "phase=backend test"
-bash "${CLEAN_ROOT}/backend/scripts/test-with-postgres.sh" --evidence "${EVIDENCE}.backend" || log "WARN backend test needs Docker daemon"
+bash "${CLEAN_ROOT}/backend/scripts/test-with-postgres.sh" --evidence "${EVIDENCE}.backend"
 
 log "phase=frontend test"
 bash "${CLEAN_ROOT}/frontend/scripts/verify-in-temp.sh" --evidence "${EVIDENCE}.frontend" --full
 
 log "phase=smoke health"
-bash "${CLEAN_ROOT}/scripts/smoke.sh" health > "${EVIDENCE}.smoke" 2>&1 || log "WARN smoke needs Docker daemon"
+bash "${CLEAN_ROOT}/scripts/smoke.sh" health > "${EVIDENCE}.smoke" 2>&1
 
 log "== verify-clean-copy.sh OK =="
