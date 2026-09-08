@@ -37,7 +37,7 @@ npm run build
 |------|------|------|
 | Next.js | 16.3.3 | React 프레임워크 (App Router) |
 | React | 19.2.7 | UI 라이브러리 |
-| TypeScript | 5.7.2 | 정적 타입 |
+| TypeScript | 5.9.3 | 정적 타입 |
 | Tailwind CSS | 3.4.17 | 유틸리티 CSS |
 | Leaflet | 1.9.4 | 지도 (타임라인 마커) |
 | react-leaflet | 5.0.0 | Leaflet React 래퍼 (React 19 지원) |

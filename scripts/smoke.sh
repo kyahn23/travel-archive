@@ -14,7 +14,7 @@ export TA_SMOKE_RUN_ID TA_SMOKE_PORT
 
 cleanup() {
   local rc=$?
-  docker compose -f "$ROOT/docker-compose.smoke.yml" --project-name "$TA_SMOKE_PROJECT" down -v >>"$EVIDENCE" 2>&1 || true
+  docker compose -f "$ROOT/docker-compose.smoke.yml" --project-name "$TA_SMOKE_PROJECT" down -v --rmi local >>"$EVIDENCE" 2>&1 || true
   rm -f "$JAR"
   exit "$rc"
 }

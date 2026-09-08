@@ -11,7 +11,7 @@ Travel Archive는 사용자가 방문한 여행지를 기록하고, 버킷리스
 | 영역 | 기술 |
 |------|------|
 | Backend | Spring Boot 4.0.6, Java 17, Gradle 9.5, JPA, Lombok |
-| Frontend | Next.js 16.2.7, React 19.2.7, TypeScript, Tailwind CSS |
+| Frontend | Next.js 16.3.3, React 19.2.7, TypeScript, Tailwind CSS |
 | Database | PostgreSQL 16 |
 | 인증 | JWT (httpOnly cookie) |
 | 지도 | Leaflet, @vnedyalk0v/react19-simple-maps, Recharts |
