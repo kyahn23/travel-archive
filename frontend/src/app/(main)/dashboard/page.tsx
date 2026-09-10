@@ -41,7 +41,7 @@ export default function DashboardPage() {
       const enriched: CountryData[] = res.data.map((region) => {
         const detail = detailMap.get(region.mapKey);
         return {
-          id: region.mapKey || region.countryCode,
+          id: region.mapKey,
           name: region.nameKo,
           status: region.status,
           tripCount: detail?.completedCount ?? 0,
