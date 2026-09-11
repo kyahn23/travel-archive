@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import worldCountries110m from '@/lib/geo/world-110m.json';
 import {
   BUCKET_STATUS_LABEL,
+  COUNTRIES,
   TRIP_STATUS_LABEL,
   type BucketStatus,
   type CreateBucketPayload,
@@ -76,5 +78,76 @@ describe('travel DTO types', () => {
 
     expect(Object.keys(TRIP_STATUS_LABEL)).toEqual(tripTransitions);
     expect(Object.keys(BUCKET_STATUS_LABEL)).toEqual(bucketTransitions);
+  });
+
+  it('locks the COUNTRIES catalog to the canonical alpha-2 / M49 / Korean triple', () => {
+    // 전체 배열 동등성 — order, code, mapKey, nameKo 모두 보존.
+    expect(COUNTRIES).toEqual([
+      { code: 'KR', mapKey: '410', nameKo: '대한민국' },
+      { code: 'JP', mapKey: '392', nameKo: '일본' },
+      { code: 'US', mapKey: '840', nameKo: '미국' },
+      { code: 'FR', mapKey: '250', nameKo: '프랑스' },
+      { code: 'IT', mapKey: '380', nameKo: '이탈리아' },
+      { code: 'ES', mapKey: '724', nameKo: '스페인' },
+      { code: 'GB', mapKey: '826', nameKo: '영국' },
+      { code: 'DE', mapKey: '276', nameKo: '독일' },
+      { code: 'TH', mapKey: '764', nameKo: '태국' },
+      { code: 'VN', mapKey: '704', nameKo: '베트남' },
+      { code: 'SG', mapKey: '702', nameKo: '싱가포르' },
+      { code: 'TW', mapKey: '158', nameKo: '대만' },
+      { code: 'CN', mapKey: '156', nameKo: '중국' },
+      { code: 'AU', mapKey: '036', nameKo: '호주' },
+      { code: 'CA', mapKey: '124', nameKo: '캐나다' },
+      { code: 'NZ', mapKey: '554', nameKo: '뉴질랜드' },
+      { code: 'CH', mapKey: '756', nameKo: '스위스' },
+      { code: 'AT', mapKey: '040', nameKo: '오스트리아' },
+      { code: 'CZ', mapKey: '203', nameKo: '체코' },
+      { code: 'TR', mapKey: '792', nameKo: '튀르키예' },
+    ]);
+  });
+
+  it('keeps COUNTRIES structurally sound: unique codes, unique 3-digit mapKeys, nonblank Korean names', () => {
+    expect(COUNTRIES).toHaveLength(20);
+
+    const codes = COUNTRIES.map((c) => c.code);
+    const mapKeys = COUNTRIES.map((c) => c.mapKey);
+
+    // alpha-2 코드는 20개 모두 유일해야 한다.
+    expect(new Set(codes).size).toBe(20);
+
+    // mapKey 는 정확히 3자리 숫자 문자열이어야 하고, 선행 0 도 보존된다.
+    for (const key of mapKeys) {
+      expect(key).toMatch(/^\d{3}$/);
+    }
+    expect(new Set(mapKeys).size).toBe(20);
+
+    // 선행 0 케이스(AU=036, AT=040) 가 실제로 살아 있는지 별도 검증.
+    expect(COUNTRIES.find((c) => c.code === 'AU')?.mapKey).toBe('036');
+    expect(COUNTRIES.find((c) => c.code === 'AT')?.mapKey).toBe('040');
+
+    // 한국어 이름은 비어 있으면 안 된다.
+    for (const country of COUNTRIES) {
+      expect(country.nameKo.trim().length).toBeGreaterThan(0);
+    }
+
+    // cross-index alias collision: 어느 entry 의 mapKey 도 다른 entry 의 alpha-2 와 겹치면 안 된다.
+    const codeSet: Set<string> = new Set(codes);
+    for (const key of mapKeys) {
+      expect(codeSet.has(key)).toBe(false);
+    }
+  });
+
+  it('agrees with the world topology: 19 catalog M49 keys resolve in world-110m.json, only SG/702 is absent', () => {
+    // 세계 지도 Topology 의 geometry id 는 M49 코드와 동일한 선행-0 보존 문자열이다.
+    const topologyIds = new Set(
+      worldCountries110m.objects.countries.geometries.map((g) => g.id),
+    );
+
+    const catalogKeys = COUNTRIES.map((c) => c.mapKey);
+    const present = catalogKeys.filter((k) => topologyIds.has(k));
+    const absent = catalogKeys.filter((k) => !topologyIds.has(k));
+
+    expect(present).toHaveLength(19);
+    expect(absent).toEqual(['702']);
   });
 });

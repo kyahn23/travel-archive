@@ -167,6 +167,7 @@ export function MapDetailSheet({ data, open, onClose, onTripClick }: MapDetailSh
               size="icon"
               className="h-8 w-8 -mr-2"
               aria-label="상세 닫기"
+              data-testid="mobile-close"
               onClick={onClose}
             >
               <X className="h-4 w-4" aria-hidden="true" />
@@ -228,8 +229,15 @@ export function MapDetailSheet({ data, open, onClose, onTripClick }: MapDetailSh
                 )}
               </div>
             </div>
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose}>
-              <X className="h-4 w-4" />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              aria-label="상세 닫기"
+              data-testid="desktop-close"
+              onClick={onClose}
+            >
+              <X className="h-4 w-4" aria-hidden="true" />
             </Button>
           </div>
 
