@@ -70,11 +70,9 @@ export interface CountryData {
 interface WorldMapProps {
   data: CountryData[];
   className?: string;
-  // callback 함수 타입: tripId 숫자를 받아서 아무것도 반환하지 않는 함수
   onTripClick?: (tripId: number) => void;
 }
 
-// 상세 패널 기본값입니다.
 const DEFAULT_DETAIL: MapDetailData = {
   name: "",
   status: "NONE",

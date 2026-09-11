@@ -27,10 +27,6 @@ vi.mock("@vnedyalk0v/react19-simple-maps", async (importOriginal) => {
   const actual = await importOriginal<
     typeof import("@vnedyalk0v/react19-simple-maps")
   >();
-  // ponytail: TEST-ONLY marker. 라이브러리 <Geography> 가 emit 한 path 만 식별하기 위해
-  // 한 겹의 wrapper 를 더 입혀 data-geography-rendered="true" 를 stamp 한다. 차단 shape 은
-  // wrapper 자체를 우회한 literal <path> 이므로 marker 가 없어 165/12 분할의 근거가 된다.
-  // production code path 에는 없는 속성.
   const Real = actual.Geography as unknown as React.ComponentType<
     Record<string, unknown> & { children?: ReactNode }
   >;
