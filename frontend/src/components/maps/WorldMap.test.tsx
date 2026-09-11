@@ -1,6 +1,7 @@
 import { createEvent, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { WorldMap, type CountryData } from "./WorldMap";
+import worldGeo from "@/lib/geo/world-110m.json";
 
 // 좁은 픽스처 테스트에서만 실제 토폴로지를 대체하기 위한 홀더입니다.
 // getter 로 반환값을 지연 평가하여 렌더 시점의 holder 값을 사용하게 합니다.
@@ -55,6 +56,9 @@ const HOVER = {
   NONE: "#DDD9C4",
 } as const;
 
+// 차단 경로의 고정 음영 색상 (계획 명시).
+const BLOCKED_FILL_HEX = "#D1CEC2";
+
 // ID 와 이름이 모두 없는 지형 2개로 이루어진 좁은 픽스처입니다.
 const NARROW_GEO = {
   type: "FeatureCollection",
@@ -78,6 +82,47 @@ const NARROW_GEO = {
   ],
 };
 
+// 12 개 차단 shape 의 입력 ID / 표시명 / 사유 접미사.
+// 10 개 외교부 공식 + 408 북한 + Somaliland 별칭.
+const BLOCKED_SHAPES: ReadonlyArray<{
+  match: (geo: { id?: string; properties?: { name?: string } }) => boolean;
+  label: string;
+}> = [
+  { match: (g) => g.id === "004", label: "아프가니스탄, 외교부 여행금지 국가로 선택할 수 없음" },
+  { match: (g) => g.id === "332", label: "아이티, 외교부 여행금지 국가로 선택할 수 없음" },
+  { match: (g) => g.id === "364", label: "이란, 외교부 여행금지 국가로 선택할 수 없음" },
+  { match: (g) => g.id === "368", label: "이라크, 외교부 여행금지 국가로 선택할 수 없음" },
+  { match: (g) => g.id === "434", label: "리비아, 외교부 여행금지 국가로 선택할 수 없음" },
+  { match: (g) => g.id === "466", label: "말리, 외교부 여행금지 국가로 선택할 수 없음" },
+  { match: (g) => g.id === "706", label: "소말리아, 외교부 여행금지 국가로 선택할 수 없음" },
+  { match: (g) => g.id === "729", label: "수단, 외교부 여행금지 국가로 선택할 수 없음" },
+  { match: (g) => g.id === "804", label: "우크라이나, 외교부 여행금지 국가로 선택할 수 없음" },
+  { match: (g) => g.id === "887", label: "예멘, 외교부 여행금지 국가로 선택할 수 없음" },
+  { match: (g) => g.id === "408", label: "북한, 별도 정책에 따라 선택할 수 없음" },
+  {
+    match: (g) => g.properties?.name === "Somaliland",
+    label: "소말릴란드, 소말리아 여행금지 정책에 따라 선택할 수 없음",
+  },
+];
+
+// 부분 금지만 있는 14 개 국가 — 차단되지 않으므로 버튼으로 남아 있어야 합니다.
+const PARTIAL_REGION_M49: ReadonlyArray<readonly [string, string]> = [
+  ["031", "아제르바이잔"],
+  ["051", "아르메니아"],
+  ["104", "미얀마"],
+  ["112", "벨라루스"],
+  ["180", "콩고-킨샤사"],
+  ["275", "팔레스타인 지구"],
+  ["376", "이스라엘"],
+  ["418", "라오스"],
+  ["422", "레바논"],
+  ["562", "니제르"],
+  ["586", "파키스탄"],
+  ["608", "필리핀"],
+  ["643", "러시아"],
+  ["760", "시리아"],
+];
+
 function renderMap(data: CountryData[] = WORLD_DATA) {
   return render(<WorldMap data={data} />);
 }
@@ -92,10 +137,33 @@ function blockedPath(label: string) {
   return screen.getByLabelText(label) as unknown as SVGPathElement;
 }
 
+// 차단/선택 분기를 위해 토폴로지의 shape 객체를 순서대로 가져옵니다.
+function topologyGeos(): Array<{
+  id?: string;
+  properties?: { name?: string };
+  type: string;
+}> {
+  const data = worldGeo as unknown as {
+    objects: { countries: { geometries: Array<unknown> } };
+  };
+  return data.objects.countries.geometries as Array<{
+    id?: string;
+    properties?: { name?: string };
+    type: string;
+  }>;
+}
+
 // 포커스 윤곽선 overlay path 들을 반환합니다.
 function focusRings(container: HTMLElement) {
   return Array.from(
     container.querySelectorAll<SVGPathElement>('[data-map-focus-ring]')
+  );
+}
+
+// 모든 rsm-geography path 를 반환합니다 (차단 + 선택).
+function allGeoPaths(container: HTMLElement) {
+  return Array.from(
+    container.querySelectorAll<SVGPathElement>("path.rsm-geography"),
   );
 }
 
@@ -111,32 +179,76 @@ function stubFocusVisible() {
   };
 }
 
+// 차단 shape 하나에 대해 가능한 모든 입력 이벤트를 쏘고 어떤 상태 변화도
+// 발생하지 않음을 확인합니다. 라벨로 찾은 path 를 직접 반환합니다.
+function fireAllBlockedInputs(node: SVGPathElement, container: HTMLElement) {
+  fireEvent.mouseEnter(node);
+  fireEvent.mouseDown(node);
+  fireEvent.click(node);
+  fireEvent.pointerOver(node);
+  fireEvent.pointerDown(node);
+  fireEvent.pointerUp(node);
+  fireEvent.click(node);
+  fireEvent.touchStart(node);
+  fireEvent.touchEnd(node);
+  fireEvent.click(node);
+  fireEvent.focus(node);
+  const enterEvent = createEvent.keyDown(node, { key: "Enter" });
+  fireEvent(node, enterEvent);
+  const spaceEvent = createEvent.keyDown(node, { key: " " });
+  fireEvent(node, spaceEvent);
+
+  return {
+    fill: node.getAttribute("fill"),
+    ariaPressed: node.getAttribute("aria-pressed"),
+    dataSelectable: node.getAttribute("data-map-selectable"),
+    tabIndex: node.getAttribute("tabindex"),
+    pointerEvents: node.getAttribute("pointer-events"),
+    role: node.getAttribute("role"),
+    cursor: node.style.cursor,
+    outline: node.style.outline,
+    dialog: screen.queryByRole("dialog"),
+    focusRingCount: focusRings(container).length,
+  };
+}
+
 describe("WorldMap", () => {
-  it("177개 국가 path 가 한국어 ARIA 를 가진다 (165 선택, 12 차단, 싱가포르 제외)", () => {
+  it("177 개 path 가 모두 DOM 에 존재하며 165 개 button / 12 개 img 로 정확히 분할된다", () => {
     const { container } = renderMap();
-    const buttons = Array.from(
-      container.querySelectorAll<SVGPathElement>('path[role="button"]')
+    // 토폴로지 path 가 DOM 에 모두 존재 (block 으로 숨기지 않음).
+    expect(allGeoPaths(container)).toHaveLength(177);
+    const buttons = container.querySelectorAll<SVGPathElement>(
+      'path.rsm-geography[role="button"]',
     );
-    // 110m 토폴로지는 177개 지형이며, 그중 3개는 ID 가 없습니다.
-    expect(buttons).toHaveLength(177);
+    const imgs = container.querySelectorAll<SVGPathElement>(
+      'path.rsm-geography[role="img"]',
+    );
+    expect(buttons).toHaveLength(165);
+    expect(imgs).toHaveLength(12);
 
-    // 12개 차단: "<이름>, <사유 접미사>" 형식.
-    const blocked = buttons.filter((p) => {
-      const label = p.getAttribute("aria-label") ?? "";
-      return /, .+선택할 수 없음$/.test(label);
-    });
-    expect(blocked).toHaveLength(12);
+    // tabIndex 분할: 선택 가능은 0, 차단은 -1.
+    const tabIdxZero = container.querySelectorAll<SVGPathElement>(
+      'path.rsm-geography[tabindex="0"]',
+    );
+    const tabIdxNegOne = container.querySelectorAll<SVGPathElement>(
+      'path.rsm-geography[tabindex="-1"]',
+    );
+    expect(tabIdxZero).toHaveLength(165);
+    expect(tabIdxNegOne).toHaveLength(12);
 
-    // 165개 선택 가능: "<이름> 상세 보기" 형식.
-    const selectable = buttons.filter((p) => {
-      const label = p.getAttribute("aria-label") ?? "";
-      return / 상세 보기$/.test(label);
-    });
-    expect(selectable).toHaveLength(165);
-
-    for (const button of selectable) {
+    // 각 selectable 는 aria-pressed="false" 와 outline=none 를 유지한다.
+    for (const button of Array.from(buttons)) {
       expect(button.getAttribute("aria-pressed")).toBe("false");
+      expect(button.getAttribute("data-map-selectable")).toBe("true");
       expect(button.style.outline).toBe("none");
+    }
+    // 각 blocked 는 aria-pressed 부재, data-map-selectable=false, 고정 음영.
+    for (const img of Array.from(imgs)) {
+      expect(img.getAttribute("aria-pressed")).toBeNull();
+      expect(img.getAttribute("data-map-selectable")).toBe("false");
+      expect(img.getAttribute("fill")).toBe(BLOCKED_FILL_HEX);
+      expect(img.style.cursor).toBe("default");
+      expect(img.style.outline).toBe("none");
     }
 
     // 동적 데이터 국가는 카탈로그 nameKo (strict priority 1) 를 쓴다.
@@ -152,6 +264,198 @@ describe("WorldMap", () => {
     expect(screen.queryByLabelText("Australia 상세 보기")).not.toBeInTheDocument();
     // 싱가포르는 카탈로그에 있지만 110m 토폴로지에 지형이 없어 렌더되지 않습니다.
     expect(screen.queryByLabelText("싱가포르 상세 보기")).not.toBeInTheDocument();
+  });
+
+  it("렌더 path 순서와 실제 토폴로지를 1:1 로 zip 하면 모든 비-차단 shape 은 button 이다", () => {
+    const { container } = renderMap();
+    const rendered = allGeoPaths(container);
+    const geos = topologyGeos();
+    expect(rendered).toHaveLength(geos.length);
+    expect(rendered).toHaveLength(177);
+
+    const blockedIds = new Set([
+      "004",
+      "332",
+      "364",
+      "368",
+      "434",
+      "466",
+      "706",
+      "729",
+      "804",
+      "887",
+      "408",
+    ]);
+    const blockedAliases = new Set(["Somaliland"]);
+
+    for (let i = 0; i < rendered.length; i++) {
+      const path = rendered[i];
+      const geo = geos[i];
+      const isBlocked =
+        blockedIds.has(geo.id ?? "") || blockedAliases.has(geo.properties?.name ?? "");
+      if (isBlocked) {
+        expect(path.getAttribute("role")).toBe("img");
+        expect(path.getAttribute("tabindex")).toBe("-1");
+        expect(path.getAttribute("data-map-selectable")).toBe("false");
+        expect(path.getAttribute("aria-pressed")).toBeNull();
+      } else {
+        expect(path.getAttribute("role")).toBe("button");
+        expect(path.getAttribute("tabindex")).toBe("0");
+        expect(path.getAttribute("data-map-selectable")).toBe("true");
+        // 모든 비-차단 path 는 aria-label 끝이 " 상세 보기" 이다.
+        const label = path.getAttribute("aria-label") ?? "";
+        expect(label.endsWith(" 상세 보기")).toBe(true);
+        expect(label).not.toContain(", ");
+      }
+    }
+  });
+
+  it.each(BLOCKED_SHAPES)(
+    "$label — 차단 path 가 비-대화형 이미지로 렌더된다",
+    ({ label }) => {
+      const { container } = renderMap();
+      const path = blockedPath(label);
+      expect(path.getAttribute("role")).toBe("img");
+      expect(path.getAttribute("tabindex")).toBe("-1");
+      expect(path.getAttribute("data-map-selectable")).toBe("false");
+      expect(path.getAttribute("aria-pressed")).toBeNull();
+      expect(path.getAttribute("fill")).toBe(BLOCKED_FILL_HEX);
+      expect(path.getAttribute("pointer-events")).toBe("none");
+      expect(path.style.cursor).toBe("default");
+      expect(path.style.outline).toBe("none");
+      // 같은 rsm-geography class 는 유지한다 (DOM 에 남아 있어야 한다).
+      expect(path.classList.contains("rsm-geography")).toBe(true);
+      // 차단 shape 의 container 어디에도 포커스 링이 없어야 한다.
+      expect(focusRings(container)).toHaveLength(0);
+    },
+  );
+
+  it.each(BLOCKED_SHAPES)(
+    "$label — 어떤 입력 이벤트도 시트/상태/포커스/호버를 바꾸지 않는다",
+    ({ label }) => {
+      const { container } = renderMap();
+      const path = blockedPath(label);
+      const after = fireAllBlockedInputs(path, container);
+
+      // 시각적 상태 변화 없음.
+      expect(after.fill).toBe(BLOCKED_FILL_HEX);
+      expect(after.ariaPressed).toBeNull();
+      expect(after.dataSelectable).toBe("false");
+      expect(after.tabIndex).toBe("-1");
+      expect(after.pointerEvents).toBe("none");
+      expect(after.role).toBe("img");
+      expect(after.cursor).toBe("default");
+      expect(after.outline).toBe("none");
+      // 시트/포커스/호버 변화 없음.
+      expect(after.dialog).toBeNull();
+      expect(after.focusRingCount).toBe(0);
+    },
+  );
+
+  it.each(BLOCKED_SHAPES)(
+    "$label — 차단 path 가 이미 열린 selectable 상세를 교체하거나 닫지 않는다",
+    ({ label }) => {
+      const { container } = renderMap();
+      // 먼저 대한민국 상세를 연다 (활성 selectable).
+      const korea = countryPath("대한민국");
+      fireEvent.click(korea);
+      expect(
+        screen.getByRole("dialog", { name: "대한민국 상세" }),
+      ).toBeInTheDocument();
+      const koreaPressedBefore = korea.getAttribute("aria-pressed");
+
+      // 차단 shape 의 모든 입력 이벤트를 쏜다.
+      const path = blockedPath(label);
+      fireAllBlockedInputs(path, container);
+
+      // 기존 활성 상세와 선택이 그대로 유지된다.
+      expect(
+        screen.getByRole("dialog", { name: "대한민국 상세" }),
+      ).toBeInTheDocument();
+      expect(korea.getAttribute("aria-pressed")).toBe(koreaPressedBefore);
+      expect(path.getAttribute("fill")).toBe(BLOCKED_FILL_HEX);
+    },
+  );
+
+  it.each(PARTIAL_REGION_M49)(
+    "부분 금지만 있는 M49 %s ($koreanName) 는 차단 영향 없이 button 으로 열린다",
+    (m49, koreanName) => {
+      const { container } = renderMap();
+      const path = countryPath(koreanName);
+      expect(path.getAttribute("role")).toBe("button");
+      expect(path.getAttribute("tabindex")).toBe("0");
+      expect(path.getAttribute("data-map-selectable")).toBe("true");
+      expect(path.getAttribute("aria-label")).toBe(`${koreanName} 상세 보기`);
+      expect(path.getAttribute("aria-pressed")).toBe("false");
+      fireEvent.click(path);
+      expect(
+        screen.getByRole("dialog", { name: `${koreanName} 상세` }),
+      ).toBeInTheDocument();
+      expect(path.getAttribute("aria-pressed")).toBe("true");
+      fireEvent.click(screen.getByTestId("desktop-close"));
+      const blockedPaths = container.querySelectorAll<SVGPathElement>(
+        `path.rsm-geography[role="img"][data-map-selectable="false"]`,
+      );
+      const blockedLabels = Array.from(blockedPaths).map(
+        (p) => p.getAttribute("aria-label") ?? "",
+      );
+      expect(blockedLabels.some((l) => l.startsWith(koreanName))).toBe(false);
+    },
+  );
+
+  it("608 필리핀은 마우스 클릭과 키보드 Enter 로 한글 상세를 연다", () => {
+    const restore = stubFocusVisible();
+    try {
+      const { container } = renderMap();
+      const philippines = countryPath("필리핀");
+
+      // 마우스 클릭 경로.
+      fireEvent.click(philippines);
+      expect(
+        screen.getByRole("dialog", { name: "필리핀 상세" }),
+      ).toBeInTheDocument();
+      expect(philippines.getAttribute("aria-pressed")).toBe("true");
+      fireEvent.click(screen.getByTestId("desktop-close"));
+
+      // 키보드 Enter 경로.
+      fireEvent.focus(philippines);
+      fireEvent.keyDown(philippines, { key: "Enter" });
+      expect(philippines.getAttribute("aria-pressed")).toBe("true");
+      expect(
+        screen.getByRole("dialog", { name: "필리핀 상세" }),
+      ).toBeInTheDocument();
+      expect(focusRings(container)).toHaveLength(2);
+    } finally {
+      restore();
+    }
+  });
+
+  it("586 파키스탄은 마우스 클릭과 키보드 Space 로 한글 상세를 연다", () => {
+    const restore = stubFocusVisible();
+    try {
+      renderMap();
+      const pakistan = countryPath("파키스탄");
+
+      // 마우스 클릭 경로.
+      fireEvent.click(pakistan);
+      expect(
+        screen.getByRole("dialog", { name: "파키스탄 상세" }),
+      ).toBeInTheDocument();
+      expect(pakistan.getAttribute("aria-pressed")).toBe("true");
+      fireEvent.click(screen.getByTestId("desktop-close"));
+
+      // 키보드 Space 경로.
+      fireEvent.focus(pakistan);
+      const spaceEvent = createEvent.keyDown(pakistan, { key: " " });
+      fireEvent(pakistan, spaceEvent);
+      expect(spaceEvent.defaultPrevented).toBe(true);
+      expect(pakistan.getAttribute("aria-pressed")).toBe("true");
+      expect(
+        screen.getByRole("dialog", { name: "파키스탄 상세" }),
+      ).toBeInTheDocument();
+    } finally {
+      restore();
+    }
   });
 
   it("410 클릭은 대한민국 상세 시트를 열고 선택을 남기되 포커스 윤곽선은 그리지 않는다", () => {
@@ -312,12 +616,22 @@ describe("WorldMap", () => {
       },
     ]);
     const northKorea = blockedPath("북한, 별도 정책에 따라 선택할 수 없음");
-    // 차단된 경로는 dynamic data 가 있어도 status=NONE 으로 강제, NONE 색.
-    expect(northKorea.getAttribute("aria-pressed")).toBe("false");
-    expect(northKorea.getAttribute("fill")).toBe(FILL.NONE);
+    // 차단된 경로는 dynamic data 가 있어도 status=NONE 으로 강제, 고정 음영.
+    expect(northKorea.getAttribute("aria-pressed")).toBeNull();
+    expect(northKorea.getAttribute("data-map-selectable")).toBe("false");
+    expect(northKorea.getAttribute("fill")).toBe(BLOCKED_FILL_HEX);
+    // 클릭/Enter/Space 등 어떤 입력에도 시트가 열리지 않거나 상태가 바뀌지 않는다.
     fireEvent.click(northKorea);
+    fireEvent.mouseEnter(northKorea);
+    fireEvent.mouseDown(northKorea);
+    fireEvent.focus(northKorea);
+    const enterEvent = createEvent.keyDown(northKorea, { key: "Enter" });
+    fireEvent(northKorea, enterEvent);
+    const spaceEvent = createEvent.keyDown(northKorea, { key: " " });
+    fireEvent(northKorea, spaceEvent);
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    expect(northKorea.getAttribute("aria-pressed")).toBe("false");
+    expect(northKorea.getAttribute("aria-pressed")).toBeNull();
+    expect(northKorea.getAttribute("fill")).toBe(BLOCKED_FILL_HEX);
   });
 
   it("ID 없는 지형은 rsmKey 로 독립 식별된다 (북키프로스 선택, 소말릴란드 차단)", () => {
@@ -327,16 +641,16 @@ describe("WorldMap", () => {
       "소말릴란드, 소말리아 여행금지 정책에 따라 선택할 수 없음"
     );
     expect(northCyprus.getAttribute("aria-pressed")).toBe("false");
-    expect(somaliland.getAttribute("aria-pressed")).toBe("false");
+    expect(somaliland.getAttribute("aria-pressed")).toBeNull();
 
     // 북키프로스 (선택 가능) 활성화.
     fireEvent.click(northCyprus);
     expect(northCyprus.getAttribute("aria-pressed")).toBe("true");
-    expect(somaliland.getAttribute("aria-pressed")).toBe("false");
+    expect(somaliland.getAttribute("aria-pressed")).toBeNull();
 
     // 소말릴란드 (차단) 클릭 — 시트가 열리지 않고 선택도 바뀌지 않음.
     fireEvent.click(somaliland);
-    expect(somaliland.getAttribute("aria-pressed")).toBe("false");
+    expect(somaliland.getAttribute("aria-pressed")).toBeNull();
     expect(northCyprus.getAttribute("aria-pressed")).toBe("true");
     expect(screen.queryByRole("dialog", { name: /소말릴란드/ })).not.toBeInTheDocument();
     expect(
@@ -556,9 +870,15 @@ describe("WorldMap", () => {
         p.hasAttribute("data-map-focus-ring")
       );
       expect(firstRingIndex).toBe(paths.length - 2);
-      expect(
-        paths.filter((p) => p.getAttribute("role") === "button")
-      ).toHaveLength(177);
+      // 165 개 button path + 2 개 focus-ring path = 167 (스피어/그래티큘 path 제외한 rsm-geography 합)
+      const geoButtons = container.querySelectorAll<SVGPathElement>(
+        'path.rsm-geography[role="button"]'
+      );
+      const geoImgs = container.querySelectorAll<SVGPathElement>(
+        'path.rsm-geography[role="img"]'
+      );
+      expect(geoButtons).toHaveLength(165);
+      expect(geoImgs).toHaveLength(12);
     } finally {
       restore();
     }

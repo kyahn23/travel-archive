@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState, type FocusEvent, type KeyboardEvent } from "react";
 import {
   ComposableMap,
   Geographies,
@@ -90,6 +90,18 @@ const GEOGRAPHY_STYLE = {
   pressed: { cursor: "pointer", outline: "none" },
   focused: { cursor: "pointer", outline: "none" },
 } as const;
+
+// 차단 경로는 4 변형 모두 동일 — default 커서와 outline 없음.
+// ponytail: 라이브러리 내부 pressed/focused 상태가 변해도 시각적 변화가 0 이 되도록 한다.
+const BLOCKED_GEOGRAPHY_STYLE = {
+  default: { cursor: "default", outline: "none" },
+  hover: { cursor: "default", outline: "none" },
+  pressed: { cursor: "default", outline: "none" },
+  focused: { cursor: "default", outline: "none" },
+} as const;
+
+// 차단 경로의 고정 음영 색상 (계획 명시, fill 은 style 이 아닌 SVG prop 으로만 전달).
+const BLOCKED_FILL = "#D1CEC2" as const;
 
 /**
  * 입력값(문자열/숫자/null/undefined)을 정규화된 지도 키로 바꿉니다.
@@ -267,6 +279,10 @@ export function WorldMap({ data, className, onTripClick }: WorldMapProps) {
   // 포인터 클릭과 키보드 활성화가 같은 동작을 거치도록 하나의 활성화 함수를 씁니다.
   // 차단된 경로는 어떤 상태도 바꾸지 않고 즉시 반환합니다 (조기 반환 → 모든
   // setState 보다 먼저).
+  // ponytail: blocked 경로 첫 줄 가드 — 라이브러리 내부 onClick/onKeyDown 가
+  // 호출되어도 setState 가 새지 않도록 보호합니다. 렌더 경로가 차단 path 에
+  // 핸들러를 붙이지 않더라도, 외부 코드 변경으로 핸들러가 다시 추가되어도
+  // 동일하게 fail-closed 동작을 유지합니다.
   const activateGeo = useCallback(
     (geo: PreparedFeature) => {
       const resolved = resolveGeo(geo);
@@ -302,7 +318,9 @@ export function WorldMap({ data, className, onTripClick }: WorldMapProps) {
             const geos = geographies as PreparedFeature[];
             // ponytail: 포커스된 geo 를 O(n) find 로 찾습니다. 177개 지형이라 충분합니다.
             const focusedGeo = focusedGeoKey
-              ? geos.find((g) => g.rsmKey === focusedGeoKey)
+              ? geos.find(
+                  (g) => g.rsmKey === focusedGeoKey && resolveGeo(g).isSelectable,
+                )
               : undefined;
 
             return (
@@ -317,42 +335,67 @@ export function WorldMap({ data, className, onTripClick }: WorldMapProps) {
                     ? `${name} 상세 보기`
                     : `${name}, ${resolved.blockPolicy.reasonSuffixKo}`;
 
+                  // ponytail: 단일 Geography + 조건부 spread.
+                  // 라이브러리가 tabIndex=0 을 내부 기본값으로 주입하고, ...rest 가
+                  // 그 뒤에 오므로 사용자 tabIndex 가 항상 이깁니다 (-1 도 적용됨).
                   return (
                     <Geography
                       // rsmKey 는 라이브러리가 보장하는 유일 키입니다 (id 없는 지형 포함).
                       key={geo.rsmKey}
                       geography={geo}
-                      // hover 또는 선택이면 어두운 hover 색을 유지합니다.
                       fill={
-                        isHovered || isSelected
-                          ? STATUS_HOVER[status]
-                          : STATUS_FILL[status]
+                        resolved.isSelectable
+                          ? isHovered || isSelected
+                            ? STATUS_HOVER[status]
+                            : STATUS_FILL[status]
+                          : BLOCKED_FILL
                       }
+                      opacity={1}
                       stroke="#FFFFFF"
                       strokeWidth={0.4}
-                      role="button"
-                      aria-label={ariaLabel}
-                      aria-pressed={isSelected}
-                      style={GEOGRAPHY_STYLE}
-                      onMouseEnter={() => setHoveredGeo(geo.rsmKey)}
-                      // mouse leave 는 hover 만 해제하고 선택은 유지합니다.
-                      onMouseLeave={() => setHoveredGeo(null)}
-                      onFocus={(event) => {
-                        // 키보드 포커스일 때만 윤곽선을 그립니다.
-                        if (event.currentTarget.matches(":focus-visible")) {
-                          setFocusedGeoKey(geo.rsmKey);
-                        }
-                      }}
-                      // blur 는 포커스 표시만 해제하고 선택은 유지합니다.
-                      onBlur={() => setFocusedGeoKey(null)}
-                      onClick={() => activateGeo(geo)}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter" || event.key === " ") {
-                          event.preventDefault();
-                          if (event.repeat) return;
-                          activateGeo(geo);
-                        }
-                      }}
+                      style={
+                        resolved.isSelectable
+                          ? GEOGRAPHY_STYLE
+                          : BLOCKED_GEOGRAPHY_STYLE
+                      }
+                      {...(resolved.isSelectable
+                        ? {
+                            role: "button" as const,
+                            tabIndex: 0,
+                            "aria-label": ariaLabel,
+                            "aria-pressed": isSelected,
+                            "data-map-selectable": "true" as const,
+                            onMouseEnter: () => setHoveredGeo(geo.rsmKey),
+                            // mouse leave 는 hover 만 해제하고 선택은 유지합니다.
+                            onMouseLeave: () => setHoveredGeo(null),
+                            onFocus: (
+                              event: FocusEvent<SVGPathElement>,
+                            ) => {
+                              // 키보드 포커스일 때만 윤곽선을 그립니다.
+                              if (event.currentTarget.matches(":focus-visible")) {
+                                setFocusedGeoKey(geo.rsmKey);
+                              }
+                            },
+                            // blur 는 포커스 표시만 해제하고 선택은 유지합니다.
+                            onBlur: () => setFocusedGeoKey(null),
+                            onClick: () => activateGeo(geo),
+                            onKeyDown: (
+                              event: KeyboardEvent<SVGPathElement>,
+                            ) => {
+                              if (event.key === "Enter" || event.key === " ") {
+                                event.preventDefault();
+                                if (event.repeat) return;
+                                activateGeo(geo);
+                              }
+                            },
+                          }
+                        : {
+                            role: "img" as const,
+                            tabIndex: -1,
+                            "aria-label": ariaLabel,
+                            "data-map-selectable": "false" as const,
+                            pointerEvents: "none",
+                          })}
                     />
                   );
                 })}
