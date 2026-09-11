@@ -91,15 +91,6 @@ const GEOGRAPHY_STYLE = {
   focused: { cursor: "pointer", outline: "none" },
 } as const;
 
-// 차단 경로는 4 변형 모두 동일 — default 커서와 outline 없음.
-// ponytail: 라이브러리 내부 pressed/focused 상태가 변해도 시각적 변화가 0 이 되도록 한다.
-const BLOCKED_GEOGRAPHY_STYLE = {
-  default: { cursor: "default", outline: "none" },
-  hover: { cursor: "default", outline: "none" },
-  pressed: { cursor: "default", outline: "none" },
-  focused: { cursor: "default", outline: "none" },
-} as const;
-
 // 차단 경로의 고정 음영 색상 (계획 명시, fill 은 style 이 아닌 SVG prop 으로만 전달).
 const BLOCKED_FILL = "#D1CEC2" as const;
 
@@ -335,67 +326,69 @@ export function WorldMap({ data, className, onTripClick }: WorldMapProps) {
                     ? `${name} 상세 보기`
                     : `${name}, ${resolved.blockPolicy.reasonSuffixKo}`;
 
-                  // ponytail: 단일 Geography + 조건부 spread.
-                  // 라이브러리가 tabIndex=0 을 내부 기본값으로 주입하고, ...rest 가
-                  // 그 뒤에 오므로 사용자 tabIndex 가 항상 이깁니다 (-1 도 적용됨).
-                  return (
-                    <Geography
-                      // rsmKey 는 라이브러리가 보장하는 유일 키입니다 (id 없는 지형 포함).
-                      key={geo.rsmKey}
-                      geography={geo}
-                      fill={
-                        resolved.isSelectable
-                          ? isHovered || isSelected
+                  if (resolved.isSelectable) {
+                    return (
+                      <Geography
+                        // rsmKey 는 라이브러리가 보장하는 유일 키입니다 (id 없는 지형 포함).
+                        key={geo.rsmKey}
+                        geography={geo}
+                        fill={
+                          isHovered || isSelected
                             ? STATUS_HOVER[status]
                             : STATUS_FILL[status]
-                          : BLOCKED_FILL
-                      }
+                        }
+                        opacity={1}
+                        stroke="#FFFFFF"
+                        strokeWidth={0.4}
+                        style={GEOGRAPHY_STYLE}
+                        role="button"
+                        tabIndex={0}
+                        aria-label={ariaLabel}
+                        aria-pressed={isSelected}
+                        data-map-selectable="true"
+                        onMouseEnter={() => setHoveredGeo(geo.rsmKey)}
+                        // mouse leave 는 hover 만 해제하고 선택은 유지합니다.
+                        onMouseLeave={() => setHoveredGeo(null)}
+                        onFocus={(event: FocusEvent<SVGPathElement>) => {
+                          // 키보드 포커스일 때만 윤곽선을 그립니다.
+                          if (event.currentTarget.matches(":focus-visible")) {
+                            setFocusedGeoKey(geo.rsmKey);
+                          }
+                        }}
+                        // blur 는 포커스 표시만 해제하고 선택은 유지합니다.
+                        onBlur={() => setFocusedGeoKey(null)}
+                        onClick={() => activateGeo(geo)}
+                        onKeyDown={(event: KeyboardEvent<SVGPathElement>) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            if (event.repeat) return;
+                            activateGeo(geo);
+                          }
+                        }}
+                      />
+                    );
+                  }
+
+                  // 차단 경로: 라이브러리 <Geography> 는 항상 onClick/onMouseEnter/onMouseLeave/
+                  // onFocus/onBlur/onMouseDown/onMouseUp 핸들러를 path 에 설치한다 (index.js 의
+                  // function k 가 tabIndex:0 + 위 on* 들을 항상 emit 하고, ...rest 가 그 뒤에 spread).
+                  // 외부 코드 변경으로 on* 가 다시 추가되어도 차단 path 는 라이브러리 wrapper 자체를
+                  // 우회하므로 핸들러가 새지 않는다 — activateGeo 의 blocked 가드와 함께 fail-closed 의
+                  // 두 번째 층이다.
+                  return (
+                    <path
+                      key={geo.rsmKey}
+                      d={geo.svgPath}
+                      className="rsm-geography"
+                      fill={BLOCKED_FILL}
                       opacity={1}
                       stroke="#FFFFFF"
                       strokeWidth={0.4}
-                      style={
-                        resolved.isSelectable
-                          ? GEOGRAPHY_STYLE
-                          : BLOCKED_GEOGRAPHY_STYLE
-                      }
-                      {...(resolved.isSelectable
-                        ? {
-                            role: "button" as const,
-                            tabIndex: 0,
-                            "aria-label": ariaLabel,
-                            "aria-pressed": isSelected,
-                            "data-map-selectable": "true" as const,
-                            onMouseEnter: () => setHoveredGeo(geo.rsmKey),
-                            // mouse leave 는 hover 만 해제하고 선택은 유지합니다.
-                            onMouseLeave: () => setHoveredGeo(null),
-                            onFocus: (
-                              event: FocusEvent<SVGPathElement>,
-                            ) => {
-                              // 키보드 포커스일 때만 윤곽선을 그립니다.
-                              if (event.currentTarget.matches(":focus-visible")) {
-                                setFocusedGeoKey(geo.rsmKey);
-                              }
-                            },
-                            // blur 는 포커스 표시만 해제하고 선택은 유지합니다.
-                            onBlur: () => setFocusedGeoKey(null),
-                            onClick: () => activateGeo(geo),
-                            onKeyDown: (
-                              event: KeyboardEvent<SVGPathElement>,
-                            ) => {
-                              if (event.key === "Enter" || event.key === " ") {
-                                event.preventDefault();
-                                if (event.repeat) return;
-                                activateGeo(geo);
-                              }
-                            },
-                          }
-                        : {
-                            role: "img" as const,
-                            tabIndex: -1,
-                            "aria-label": ariaLabel,
-                            "data-map-selectable": "false" as const,
-                            pointerEvents: "none",
-                          })}
+                      role="img"
+                      tabIndex={-1}
+                      aria-label={ariaLabel}
+                      data-map-selectable="false"
+                      pointerEvents="none"
                     />
                   );
                 })}

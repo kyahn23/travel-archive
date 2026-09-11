@@ -1,5 +1,6 @@
 import { createEvent, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { ReactNode } from "react";
 import { WorldMap, type CountryData } from "./WorldMap";
 import worldGeo from "@/lib/geo/world-110m.json";
 
@@ -16,6 +17,28 @@ vi.mock("@/lib/geo/world-110m.json", async (importOriginal) => {
       return geography.current ?? actual.default;
     },
   };
+});
+
+// ponytail: TEST-ONLY marker. 라이브러리 <Geography> 가 emit 한 path 만 식별하기 위해
+// 한 겹의 wrapper 를 더 입혀 data-geography-rendered="true" 를 stamp 한다. 차단 shape 은
+// wrapper 자체를 우회한 literal <path> 이므로 marker 가 없어 165/12 분할의 근거가 된다.
+// production code path 에는 없는 속성.
+vi.mock("@vnedyalk0v/react19-simple-maps", async (importOriginal) => {
+  const actual = await importOriginal<
+    typeof import("@vnedyalk0v/react19-simple-maps")
+  >();
+  // ponytail: TEST-ONLY marker. 라이브러리 <Geography> 가 emit 한 path 만 식별하기 위해
+  // 한 겹의 wrapper 를 더 입혀 data-geography-rendered="true" 를 stamp 한다. 차단 shape 은
+  // wrapper 자체를 우회한 literal <path> 이므로 marker 가 없어 165/12 분할의 근거가 된다.
+  // production code path 에는 없는 속성.
+  const Real = actual.Geography as unknown as React.ComponentType<
+    Record<string, unknown> & { children?: ReactNode }
+  >;
+  const RenderedGeography = (props: Record<string, unknown>) => (
+    <Real {...props} data-geography-rendered="true" />
+  );
+  RenderedGeography.displayName = "Geography";
+  return { ...actual, Geography: RenderedGeography };
 });
 
 afterEach(() => {
@@ -205,8 +228,6 @@ function fireAllBlockedInputs(node: SVGPathElement, container: HTMLElement) {
     tabIndex: node.getAttribute("tabindex"),
     pointerEvents: node.getAttribute("pointer-events"),
     role: node.getAttribute("role"),
-    cursor: node.style.cursor,
-    outline: node.style.outline,
     dialog: screen.queryByRole("dialog"),
     focusRingCount: focusRings(container).length,
   };
@@ -236,6 +257,19 @@ describe("WorldMap", () => {
     expect(tabIdxZero).toHaveLength(165);
     expect(tabIdxNegOne).toHaveLength(12);
 
+    // Geography wrapper marker 분할: 165 selectable 은 marker 가 있고, 12 blocked
+    // literal path 는 wrapper 자체를 우회했으므로 marker 가 없다 — 이 분할이
+    // 165 selectable Geography / 12 blocked literal <path> 의 root cause 식별 근거다.
+    const rendered = container.querySelectorAll<SVGPathElement>(
+      'path.rsm-geography[data-geography-rendered="true"]',
+    );
+    const notRendered = container.querySelectorAll<SVGPathElement>(
+      'path.rsm-geography:not([data-geography-rendered])',
+    );
+    expect(rendered).toHaveLength(165);
+    expect(notRendered).toHaveLength(12);
+    expect(rendered.length + notRendered.length).toBe(177);
+
     // 각 selectable 는 aria-pressed="false" 와 outline=none 를 유지한다.
     for (const button of Array.from(buttons)) {
       expect(button.getAttribute("aria-pressed")).toBe("false");
@@ -243,12 +277,14 @@ describe("WorldMap", () => {
       expect(button.style.outline).toBe("none");
     }
     // 각 blocked 는 aria-pressed 부재, data-map-selectable=false, 고정 음영.
+    // literal <path> 이므로 inline style 이 없다 — cursor/outline 은 unset 이 정상.
     for (const img of Array.from(imgs)) {
       expect(img.getAttribute("aria-pressed")).toBeNull();
       expect(img.getAttribute("data-map-selectable")).toBe("false");
       expect(img.getAttribute("fill")).toBe(BLOCKED_FILL_HEX);
-      expect(img.style.cursor).toBe("default");
-      expect(img.style.outline).toBe("none");
+      expect(img.getAttribute("data-geography-rendered")).toBeNull();
+      expect(img.style.cursor).toBe("");
+      expect(img.style.outline).toBe("");
     }
 
     // 동적 데이터 국가는 카탈로그 nameKo (strict priority 1) 를 쓴다.
@@ -321,8 +357,9 @@ describe("WorldMap", () => {
       expect(path.getAttribute("aria-pressed")).toBeNull();
       expect(path.getAttribute("fill")).toBe(BLOCKED_FILL_HEX);
       expect(path.getAttribute("pointer-events")).toBe("none");
-      expect(path.style.cursor).toBe("default");
-      expect(path.style.outline).toBe("none");
+      expect(path.getAttribute("data-geography-rendered")).toBeNull();
+      expect(path.style.cursor).toBe("");
+      expect(path.style.outline).toBe("");
       // 같은 rsm-geography class 는 유지한다 (DOM 에 남아 있어야 한다).
       expect(path.classList.contains("rsm-geography")).toBe(true);
       // 차단 shape 의 container 어디에도 포커스 링이 없어야 한다.
@@ -335,6 +372,8 @@ describe("WorldMap", () => {
     ({ label }) => {
       const { container } = renderMap();
       const path = blockedPath(label);
+      // defense-in-depth only: jsdom fireEvent 는 synthetic 이라 trusted touch 가 아니다.
+      // 진짜 클릭 차단은 Todo 3 의 Chromium 390x844 컨텍스트에서 검증한다.
       const after = fireAllBlockedInputs(path, container);
 
       // 시각적 상태 변화 없음.
@@ -344,8 +383,6 @@ describe("WorldMap", () => {
       expect(after.tabIndex).toBe("-1");
       expect(after.pointerEvents).toBe("none");
       expect(after.role).toBe("img");
-      expect(after.cursor).toBe("default");
-      expect(after.outline).toBe("none");
       // 시트/포커스/호버 변화 없음.
       expect(after.dialog).toBeNull();
       expect(after.focusRingCount).toBe(0);
