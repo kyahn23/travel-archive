@@ -82,9 +82,14 @@ function renderMap(data: CountryData[] = WORLD_DATA) {
   return render(<WorldMap data={data} />);
 }
 
-// aria-label 로 국가 path 를 찾습니다.
+// 선택 가능 경로: "${name} 상세 보기" 형식.
 function countryPath(name: string) {
   return screen.getByLabelText(`${name} 상세 보기`) as unknown as SVGPathElement;
+}
+
+// 차단 경로: "<이름>, <사유 접미사>" 형식 — 라벨 전체를 그대로 넘긴다.
+function blockedPath(label: string) {
+  return screen.getByLabelText(label) as unknown as SVGPathElement;
 }
 
 // 포커스 윤곽선 overlay path 들을 반환합니다.
@@ -107,24 +112,44 @@ function stubFocusVisible() {
 }
 
 describe("WorldMap", () => {
-  it("177개 국가 path 에 role=button 과 aria-label 을 부여한다 (싱가포르 제외)", () => {
+  it("177개 국가 path 가 한국어 ARIA 를 가진다 (165 선택, 12 차단, 싱가포르 제외)", () => {
     const { container } = renderMap();
     const buttons = Array.from(
       container.querySelectorAll<SVGPathElement>('path[role="button"]')
     );
     // 110m 토폴로지는 177개 지형이며, 그중 3개는 ID 가 없습니다.
     expect(buttons).toHaveLength(177);
-    for (const button of buttons) {
-      expect(button.getAttribute("aria-label")).toMatch(/ 상세 보기$/);
+
+    // 12개 차단: "<이름>, <사유 접미사>" 형식.
+    const blocked = buttons.filter((p) => {
+      const label = p.getAttribute("aria-label") ?? "";
+      return /, .+선택할 수 없음$/.test(label);
+    });
+    expect(blocked).toHaveLength(12);
+
+    // 165개 선택 가능: "<이름> 상세 보기" 형식.
+    const selectable = buttons.filter((p) => {
+      const label = p.getAttribute("aria-label") ?? "";
+      return / 상세 보기$/.test(label);
+    });
+    expect(selectable).toHaveLength(165);
+
+    for (const button of selectable) {
       expect(button.getAttribute("aria-pressed")).toBe("false");
       expect(button.style.outline).toBe("none");
     }
-    // 동적 데이터 국가는 CountryData.name 을 씁니다.
+
+    // 동적 데이터 국가는 카탈로그 nameKo (strict priority 1) 를 쓴다.
     expect(countryPath("대한민국").getAttribute("fill")).toBe(FILL.COMPLETED);
     // 카탈로그 전용 국가는 nameKo 를 쓰고 NONE 상태입니다.
     expect(countryPath("오스트리아").getAttribute("fill")).toBe(FILL.NONE);
-    // 카탈로그에 없는 국가는 토폴로지 영문 이름을 씁니다.
-    expect(countryPath("Fiji").getAttribute("fill")).toBe(FILL.NONE);
+    // 카탈로그 오버레이: 호주는 CLDR 오스트레일리아가 아닌 카탈로그 우선.
+    expect(countryPath("호주").getAttribute("fill")).toBe(FILL.NONE);
+    // 카탈로그에 없는 토폴로지 M49 는 생성된 CLDR 표를 쓴다.
+    expect(countryPath("피지").getAttribute("fill")).toBe(FILL.NONE);
+    // 영문 properties.name 은 어떤 ARIA 에도 나타나지 않는다.
+    expect(screen.queryByLabelText("Fiji 상세 보기")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Australia 상세 보기")).not.toBeInTheDocument();
     // 싱가포르는 카탈로그에 있지만 110m 토폴로지에 지형이 없어 렌더되지 않습니다.
     expect(screen.queryByLabelText("싱가포르 상세 보기")).not.toBeInTheDocument();
   });
@@ -154,24 +179,27 @@ describe("WorldMap", () => {
     expect(austria.getAttribute("fill")).toBe(HOVER.NONE);
   });
 
-  it("패딩 없는 입력 40 은 040 지오메트리와 매칭된다", () => {
+  it("패딩 없는 입력 40 은 040 지오메트리/카탈로그로 매칭된다 (동적 영문명은 무시)", () => {
     renderMap([
       {
         id: "40",
-        name: "오스트리아(동적)",
+        // 영문만 — 한글-only 가드에서 거부된다. 그래도 카탈로그가 우선이므로 결과는 동일.
+        name: "Austria",
         status: "PLANNED",
         tripCount: 1,
         bucketCount: 0,
       },
     ]);
-    // 동적 이름이 카탈로그 nameKo 보다 우선합니다.
-    const austria = countryPath("오스트리아(동적)");
+    // strict priority 1: 카탈로그 nameKo 가 dynamic name 보다 우선한다.
+    const austria = countryPath("오스트리아");
     // "40" → "040" 정규화로 오스트리아 지형에 상태가 매칭되었습니다.
     expect(austria.getAttribute("fill")).toBe(FILL.PLANNED);
     fireEvent.click(austria);
     expect(
-      screen.getByRole("dialog", { name: "오스트리아(동적) 상세" })
+      screen.getByRole("dialog", { name: "오스트리아 상세" })
     ).toBeInTheDocument();
+    // 영문 dynamic name 은 어떤 경로에도 새지 않는다.
+    expect(screen.queryByLabelText("Austria 상세 보기")).not.toBeInTheDocument();
   });
 
   it("알파-2 데모 입력 JP 는 지오메트리 392 일본과 매칭된다", () => {
@@ -202,7 +230,7 @@ describe("WorldMap", () => {
     expect(japan.getAttribute("aria-pressed")).toBe("true");
   });
 
-  it("Fiji 는 영문 이름을 쓰고 이전 대한민국 상세를 물려받지 않는다", () => {
+  it("피지는 카탈로그 외부의 토폴로지 M49 로 한국어 라벨을 쓰고 이전 대한민국 상세를 교체한다", () => {
     renderMap();
     const korea = countryPath("대한민국");
     fireEvent.click(korea);
@@ -210,32 +238,110 @@ describe("WorldMap", () => {
       screen.getByRole("dialog", { name: "대한민국 상세" })
     ).toBeInTheDocument();
 
-    const fiji = countryPath("Fiji");
+    const fiji = countryPath("피지");
     fireEvent.click(fiji);
-    // 이전 선택의 한글 상세/상태가 남지 않고 Fiji 로 교체됩니다.
+    // 이전 선택의 한글 상세/상태가 남지 않고 피지로 교체됩니다.
     expect(
-      screen.getByRole("dialog", { name: "Fiji 상세" })
+      screen.getByRole("dialog", { name: "피지 상세" })
     ).toBeInTheDocument();
     expect(fiji.getAttribute("aria-pressed")).toBe("true");
     expect(fiji.getAttribute("fill")).toBe(HOVER.NONE);
     expect(korea.getAttribute("aria-pressed")).toBe("false");
   });
 
-  it("ID 없는 지형도 독립적인 aria-pressed 를 가진다", () => {
+  it("호주는 카탈로그 오버레이로 CLDR 오스트레일리아를 덮어쓴다", () => {
     renderMap();
-    const northCyprus = countryPath("N. Cyprus");
-    const somaliland = countryPath("Somaliland");
+    const australia = countryPath("호주");
+    expect(australia.getAttribute("fill")).toBe(FILL.NONE);
+    fireEvent.click(australia);
+    expect(
+      screen.getByRole("dialog", { name: "호주 상세" })
+    ).toBeInTheDocument();
+    expect(australia.getAttribute("aria-pressed")).toBe("true");
+    expect(screen.queryByLabelText("오스트레일리아 상세 보기")).not.toBeInTheDocument();
+  });
+
+  it("코소보 (ID-less) 는 별칭으로 한국어 라벨을 쓰고 상세를 연다", () => {
+    renderMap();
+    const kosovo = countryPath("코소보");
+    expect(kosovo.getAttribute("aria-pressed")).toBe("false");
+    fireEvent.click(kosovo);
+    // 코소보는 정책상 차단되지 않으므로 정상 선택.
+    expect(kosovo.getAttribute("aria-pressed")).toBe("true");
+    expect(
+      screen.getByRole("dialog", { name: "코소보 상세" })
+    ).toBeInTheDocument();
+  });
+
+  it("한글+ASCII 가 섞인 CountryData.name 은 카탈로그를 덮지 못한다", () => {
+    renderMap([
+      {
+        id: "040",
+        name: "오스트리아 A",
+        status: "PLANNED",
+        tripCount: 1,
+        bucketCount: 0,
+      },
+    ]);
+    // strict priority 1: 카탈로그 nameKo 가 dynamic name 을 이긴다.
+    const austria = countryPath("오스트리아");
+    expect(austria.getAttribute("fill")).toBe(FILL.PLANNED);
+    fireEvent.click(austria);
+    expect(
+      screen.getByRole("dialog", { name: "오스트리아 상세" })
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText("오스트리아 A 상세 보기")).not.toBeInTheDocument();
+  });
+
+  it("차단된 M49 의 dynamic data 가 COMPLETED/여행/카운트를 가져도 시트로 새지 않는다", () => {
+    renderMap([
+      {
+        id: "408",
+        name: "북한",
+        status: "COMPLETED",
+        tripCount: 99,
+        bucketCount: 99,
+        recentTrips: [
+          {
+            id: 1,
+            title: "평양 여행",
+            startDate: "2026-01-01",
+            endDate: "2026-01-05",
+          },
+        ],
+      },
+    ]);
+    const northKorea = blockedPath("북한, 별도 정책에 따라 선택할 수 없음");
+    // 차단된 경로는 dynamic data 가 있어도 status=NONE 으로 강제, NONE 색.
+    expect(northKorea.getAttribute("aria-pressed")).toBe("false");
+    expect(northKorea.getAttribute("fill")).toBe(FILL.NONE);
+    fireEvent.click(northKorea);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(northKorea.getAttribute("aria-pressed")).toBe("false");
+  });
+
+  it("ID 없는 지형은 rsmKey 로 독립 식별된다 (북키프로스 선택, 소말릴란드 차단)", () => {
+    renderMap();
+    const northCyprus = countryPath("북키프로스");
+    const somaliland = blockedPath(
+      "소말릴란드, 소말리아 여행금지 정책에 따라 선택할 수 없음"
+    );
     expect(northCyprus.getAttribute("aria-pressed")).toBe("false");
     expect(somaliland.getAttribute("aria-pressed")).toBe("false");
 
+    // 북키프로스 (선택 가능) 활성화.
     fireEvent.click(northCyprus);
     expect(northCyprus.getAttribute("aria-pressed")).toBe("true");
     expect(somaliland.getAttribute("aria-pressed")).toBe("false");
 
-    // 다른 ID 없는 지형 활성화는 선택을 교체합니다 (빈 키 충돌 없음).
+    // 소말릴란드 (차단) 클릭 — 시트가 열리지 않고 선택도 바뀌지 않음.
     fireEvent.click(somaliland);
-    expect(somaliland.getAttribute("aria-pressed")).toBe("true");
-    expect(northCyprus.getAttribute("aria-pressed")).toBe("false");
+    expect(somaliland.getAttribute("aria-pressed")).toBe("false");
+    expect(northCyprus.getAttribute("aria-pressed")).toBe("true");
+    expect(screen.queryByRole("dialog", { name: /소말릴란드/ })).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("dialog", { name: "북키프로스 상세" })
+    ).toBeInTheDocument();
   });
 
   it("ID/이름 없는 좁은 픽스처는 알 수 없는 지역 라벨을 쓰고 빈 키로 충돌하지 않는다", () => {

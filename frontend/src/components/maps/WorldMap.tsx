@@ -13,6 +13,16 @@ import { MapDetailSheet, type MapDetailData } from "./MapDetailSheet";
 import { cn } from "@/lib/utils";
 import { COUNTRIES } from "@/types/travel";
 import worldGeo from "@/lib/geo/world-110m.json";
+// Wave 1: 한국어 표 + 여행금지 선택 정책을 같이 묶어 임포트한다 — 두 모듈이 resolveGeo 의 분기 두 축(이름/차단)을 담당합니다.
+import {
+  WORLD_COUNTRY_ALIASES,
+  WORLD_COUNTRY_NAMES_M49,
+} from "@/lib/geo/world-country-names-ko";
+import {
+  type WorldMapBlockPolicy,
+  assertWorldMapPolicyIsFresh,
+  getWorldMapBlockPolicy,
+} from "@/lib/geo/world-map-selection-policy";
 
 // 상태를 문자열 리터럴 유니온으로 제한합니다.
 type MapStatus = "COMPLETED" | "PLANNED" | "BUCKET" | "NONE";
@@ -107,6 +117,69 @@ const CATALOG_BY_CODE = new Map<string, Country>(
   COUNTRIES.map((c) => [normalizeKey(c.code), c])
 );
 
+// 생성된 한국어 표를 Record<string,string> 로 평탄화 — 모듈 로드 시 1회 캐스팅.
+// WORLD_COUNTRY_NAMES_M49 는 3자리 M49 키, WORLD_COUNTRY_ALIASES 는 topology property name 키.
+const M49_LABELS = WORLD_COUNTRY_NAMES_M49 as Record<string, string>;
+const ALIAS_LABELS = WORLD_COUNTRY_ALIASES as Record<string, string>;
+
+// CountryData.name 의 동적 오버라이드는 한국어 전용일 때만 인정한다.
+// ASCII 글자가 한 글자라도 섞이면 한국어 표(카탈로그/CLDR/별칭)가 항상 이긴다.
+const HANGUL_RE = /[\uAC00-\uD7AF]/;
+const ASCII_LETTER_RE = /[A-Za-z]/;
+function isKoreanOnlyName(value: string): boolean {
+  return value.length > 0 && HANGUL_RE.test(value) && !ASCII_LETTER_RE.test(value);
+}
+
+/**
+ * strict priority 의 한국어 표시명 결정.
+ *  1. 카탈로그 nameKo (M49 토폴로지 우선)
+ *  2. 생성된 M49 한국어 표
+ *  3. ID-less 별칭 표
+ *  4. CountryData.name (한글-only / 비-ASCII / nonblank)
+ *  5. "알 수 없는 지역"
+ */
+function resolveKoreanName(
+  m49: string,
+  catalog: Country | undefined,
+  propsName: string,
+  datum: CountryData | undefined,
+): string {
+  if (catalog?.nameKo) return catalog.nameKo;
+  if (m49) {
+    const generated = M49_LABELS[m49];
+    if (generated) return generated;
+  } else if (propsName) {
+    const alias = ALIAS_LABELS[propsName];
+    if (alias) return alias;
+  }
+  const dyn = datum?.name?.trim() ?? "";
+  if (isKoreanOnlyName(dyn)) return dyn;
+  return "알 수 없는 지역";
+}
+
+/**
+ * resolveGeo 가 돌려주는 판별 유니온.
+ *  - isSelectable: true  → 선택 가능, dynamic detail 사용
+ *  - isSelectable: false → 차단, detailData=null, status="NONE" 강제
+ * 호출자는 isSelectable 한 가지만 보고 분기하면 됩니다 (detailData/blockPolicy 는
+ * 좁혀진 쪽에서만 접근).
+ */
+export type ResolvedGeo =
+  | {
+      isSelectable: true;
+      status: MapStatus;
+      name: string;
+      detailData: MapDetailData;
+      blockPolicy: null;
+    }
+  | {
+      isSelectable: false;
+      status: "NONE";
+      name: string;
+      detailData: null;
+      blockPolicy: WorldMapBlockPolicy;
+    };
+
 /**
  * 세계 지도를 렌더링하는 React 컴포넌트입니다.
  */
@@ -138,26 +211,38 @@ export function WorldMap({ data, className, onTripClick }: WorldMapProps) {
   }, [data]);
 
   /**
-   * geo 하나를 해석해 상태/라벨/상세 정보를 만듭니다.
+   * geo 하나를 해석해 상태/라벨/상세/차단정책을 만듭니다.
+   * 차단된 경로는 어떤 dynamic data 가 와도 status="NONE" / detailData=null
+   * 로 강제되어 MapDetailSheet 으로 새지 않습니다.
    *
-   * 도메인 조회는 항상 정규화된 최상위 geo.id(M49)로만 합니다.
-   * 라벨 우선순위: 매칭된 동적 CountryData.name → 카탈로그 nameKo(M49) →
-   * 비어 있지 않은 geo.properties.name → "알 수 없는 지역".
+   * ponytail: assertWorldMapPolicyIsFresh 를 lazy 호출 — 사용 시점에만
+   * fail-closed 가 발동하므로 임포트/SSR 단계는 안전합니다.
    */
   const resolveGeo = useCallback(
-    (geo: PreparedFeature) => {
-      const key = normalizeKey(geo.id);
-      const datum = key ? dataMap.get(key) : undefined;
-      const catalog = key ? CATALOG_BY_MAP_KEY.get(key) : undefined;
+    (geo: PreparedFeature): ResolvedGeo => {
+      assertWorldMapPolicyIsFresh();
+
+      const m49 = normalizeKey(geo.id);
+      const datum = m49 ? dataMap.get(m49) : undefined;
+      const catalog = m49 ? CATALOG_BY_MAP_KEY.get(m49) : undefined;
       const propsName =
         typeof geo.properties?.name === "string" ? geo.properties.name.trim() : "";
 
-      let name = "알 수 없는 지역";
-      if (datum?.name) name = datum.name;
-      else if (catalog?.nameKo) name = catalog.nameKo;
-      else if (propsName) name = propsName;
+      const name = resolveKoreanName(m49, catalog, propsName, datum);
+      // 별칭 매칭을 위해 propsName 도 함께 넘긴다 — 정책 모듈이 자체적으로
+      // M49 비어 있을 때만 별칭을 보도록 가드하고 있습니다.
+      const blockPolicy = getWorldMapBlockPolicy(m49, propsName);
 
-      // 동적 데이터가 있을 때만 상태/횟수/여행이 따라옵니다.
+      if (blockPolicy) {
+        return {
+          isSelectable: false,
+          status: "NONE",
+          name,
+          detailData: null,
+          blockPolicy,
+        };
+      }
+
       const detailData: MapDetailData = datum
         ? {
             name,
@@ -168,15 +253,25 @@ export function WorldMap({ data, className, onTripClick }: WorldMapProps) {
           }
         : { name, status: "NONE", tripCount: 0, bucketCount: 0 };
 
-      return { status: (datum?.status ?? "NONE") as MapStatus, name, detailData };
+      return {
+        isSelectable: true,
+        status: (datum?.status ?? "NONE") as MapStatus,
+        name,
+        detailData,
+        blockPolicy: null,
+      };
     },
     [dataMap]
   );
 
   // 포인터 클릭과 키보드 활성화가 같은 동작을 거치도록 하나의 활성화 함수를 씁니다.
+  // 차단된 경로는 어떤 상태도 바꾸지 않고 즉시 반환합니다 (조기 반환 → 모든
+  // setState 보다 먼저).
   const activateGeo = useCallback(
     (geo: PreparedFeature) => {
-      setDetail(resolveGeo(geo).detailData);
+      const resolved = resolveGeo(geo);
+      if (!resolved.isSelectable) return;
+      setDetail(resolved.detailData);
       setSheetOpen(true);
       // 다른 국가 활성화는 선택을 교체합니다.
       setSelectedGeoKey(geo.rsmKey);
@@ -213,9 +308,14 @@ export function WorldMap({ data, className, onTripClick }: WorldMapProps) {
             return (
               <>
                 {geos.map((geo) => {
-                  const { status, name } = resolveGeo(geo);
+                  const resolved = resolveGeo(geo);
+                  const { status, name } = resolved;
                   const isHovered = hoveredGeo === geo.rsmKey;
                   const isSelected = selectedGeoKey === geo.rsmKey;
+                  // 차단 경로 ARIA 합성은 정책 모듈이 아닌 본 컴포넌트의 책임입니다 (계획 명시).
+                  const ariaLabel = resolved.isSelectable
+                    ? `${name} 상세 보기`
+                    : `${name}, ${resolved.blockPolicy.reasonSuffixKo}`;
 
                   return (
                     <Geography
@@ -231,7 +331,7 @@ export function WorldMap({ data, className, onTripClick }: WorldMapProps) {
                       stroke="#FFFFFF"
                       strokeWidth={0.4}
                       role="button"
-                      aria-label={`${name} 상세 보기`}
+                      aria-label={ariaLabel}
                       aria-pressed={isSelected}
                       style={GEOGRAPHY_STYLE}
                       onMouseEnter={() => setHoveredGeo(geo.rsmKey)}
